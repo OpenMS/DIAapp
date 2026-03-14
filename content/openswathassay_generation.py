@@ -1,4 +1,5 @@
 import json as _json
+import shutil
 import time
 import traceback
 from pathlib import Path
@@ -9,6 +10,24 @@ from src.common.common import page_setup, save_params
 from src.workflow.OpenSwathAssayGeneratorWorkflow import OpenSwathAssayGeneratorWorkflow
 
 params = page_setup()
+
+openswath_binary = shutil.which("OpenSwathAssayGenerator")
+
+if not openswath_binary:
+    st.title("🎯 OpenSwath Assay Generator")
+    st.error(
+        "OpenSwathAssayGenerator could not be found on the system PATH. "
+        "Install OpenMS via conda or pip, or build it from source, then reload this page."
+    )
+    st.markdown(
+        """
+Possible installation options:
+- `conda install -c bioconda openms`
+- `pip install openms`
+- Build OpenMS from source and ensure `OpenSwathAssayGenerator` is on your `PATH`
+"""
+    )
+    st.stop()
 
 # --- Page Header -------------------------------------------------------------
 st.title("🎯 OpenSwath Assay Generator")
