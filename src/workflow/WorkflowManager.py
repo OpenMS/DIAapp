@@ -11,6 +11,7 @@ import shutil
 import time
 import traceback
 
+
 class WorkflowManager:
     # Core workflow logic using the above classes
     def __init__(self, name: str, workspace: str):
@@ -19,12 +20,16 @@ class WorkflowManager:
         self.file_manager = FileManager(self.workflow_dir)
         self.logger = Logger(self.workflow_dir)
         self.parameter_manager = ParameterManager(self.workflow_dir, workflow_name=name)
-        self.executor = CommandExecutor(self.workflow_dir, self.logger, self.parameter_manager)
-        self.ui = StreamlitUI(self.workflow_dir, self.logger, self.executor, self.parameter_manager)
+        self.executor = CommandExecutor(
+            self.workflow_dir, self.logger, self.parameter_manager
+        )
+        self.ui = StreamlitUI(
+            self.workflow_dir, self.logger, self.executor, self.parameter_manager
+        )
         self.params = self.parameter_manager.get_parameters_from_json()
 
         # Initialize queue manager for online mode
-        self._queue_manager: Optional['QueueManager'] = None
+        self._queue_manager: Optional["QueueManager"] = None
         if self._is_online_mode():
             self._init_queue_manager()
 
@@ -36,6 +41,7 @@ class WorkflowManager:
         """Initialize queue manager for online mode"""
         try:
             from .QueueManager import QueueManager
+
             self._queue_manager = QueueManager()
         except ImportError:
             pass  # Queue not available, will use fallback
@@ -69,7 +75,7 @@ class WorkflowManager:
             },
             job_id=job_id,
             timeout=7200,  # 2 hour timeout
-            description=f"Workflow: {self.name}"
+            description=f"Workflow: {self.name}",
         )
 
         if submitted_id:
@@ -82,33 +88,72 @@ class WorkflowManager:
 
     def _start_workflow_local(self) -> None:
         """Start workflow as local process (existing behavior for local mode)"""
+        print(f"[DEBUG] _start_workflow_local() called for workflow: {self.name}")
+        print(f"[DEBUG] Workflow directory: {self.workflow_dir}")
+
         # Delete the log file if it already exists
         shutil.rmtree(Path(self.workflow_dir, "logs"), ignore_errors=True)
+
         # Start workflow process
+        print(f"[DEBUG] Creating multiprocessing.Process...")
         workflow_process = multiprocessing.Process(target=self.workflow_process)
+
+        print(f"[DEBUG] Starting workflow process...")
         workflow_process.start()
+        print(f"[DEBUG] Workflow process started with PID: {workflow_process.pid}")
+
         # Add workflow process id to pid dir
-        self.executor.pid_dir.mkdir()
-        Path(self.executor.pid_dir, str(workflow_process.pid)).touch()
+        self.executor.pid_dir.mkdir(parents=True, exist_ok=True)
+        pid_file = Path(self.executor.pid_dir, str(workflow_process.pid))
+        pid_file.touch()
+        print(f"[DEBUG] PID file created at: {pid_file}")
 
     def workflow_process(self) -> None:
         """
         Workflow process. Logs start and end of the workflow and calls the execution method where all steps are defined.
         """
+        print(f"[DEBUG] workflow_process() started for {self.name}")
+
         try:
-            self.logger.log("STARTING WORKFLOW")
+            self.logger.log("=" * 80)
+            self.logger.log("WORKFLOW PROCESS STARTED")
+            self.logger.log("=" * 80)
+            print("[DEBUG] Logger initialized, about to clean results directory")
+
             results_dir = Path(self.workflow_dir, "results")
             if results_dir.exists():
                 shutil.rmtree(results_dir)
             results_dir.mkdir(parents=True)
+            self.logger.log(f"Results directory created: {results_dir}")
+
+            print("[DEBUG] About to call self.execution()...")
+            self.logger.log("Calling execution() method...")
             success = self.execution()
+
+            print(f"[DEBUG] execution() returned: {success}")
+            self.logger.log(f"execution() returned: {success}")
+
             if success:
-                self.logger.log("WORKFLOW FINISHED")
+                self.logger.log("=" * 80)
+                self.logger.log("WORKFLOW FINISHED SUCCESSFULLY")
+                self.logger.log("=" * 80)
+                print("[DEBUG] Workflow finished successfully")
+            else:
+                self.logger.log("=" * 80)
+                self.logger.log("WORKFLOW FINISHED WITH ERRORS")
+                self.logger.log("=" * 80)
+                print("[DEBUG] Workflow finished with errors")
+
         except Exception as e:
-            self.logger.log(f"ERROR: {e}")
+            print(f"[DEBUG] Exception in workflow_process: {e}")
+            self.logger.log(f"❌ ERROR: {e}")
             self.logger.log("".join(traceback.format_exception(e)))
-        # Delete pid dir path to indicate workflow is done
-        shutil.rmtree(self.executor.pid_dir, ignore_errors=True)
+
+        finally:
+            print("[DEBUG] Cleaning up PID directory...")
+            # Delete pid dir path to indicate workflow is done
+            shutil.rmtree(self.executor.pid_dir, ignore_errors=True)
+            print("[DEBUG] workflow_process() exiting")
 
     def get_workflow_status(self) -> dict:
         """
@@ -218,7 +263,7 @@ class WorkflowManager:
         Shows the file upload section of the UI with content defined in self.upload().
         """
         self.ui.file_upload_section(self.upload)
-        
+
     def show_parameter_section(self) -> None:
         """
         Shows the parameter section of the UI with content defined in self.configure().
@@ -232,9 +277,9 @@ class WorkflowManager:
         self.ui.execution_section(
             start_workflow_function=self.start_workflow,
             get_status_function=self.get_workflow_status,
-            stop_workflow_function=self.stop_workflow
+            stop_workflow_function=self.stop_workflow,
         )
-        
+
     def show_results_section(self) -> None:
         """
         Shows the results section of the UI with content defined in self.results().
