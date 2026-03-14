@@ -1,4 +1,5 @@
 import json as _json
+import time
 import traceback
 from pathlib import Path
 
@@ -394,21 +395,28 @@ if st.button(
     "🚀 Run Library Generation in Workspace", type="primary", use_container_width=True
 ):
     try:
+        st.info("🔄 Initializing workflow...")
+
         # Instantiate workflow and prepare workspace input dirs
         wf = EasyPQPWorkflow()
-        wf_dir = wf.workflow_dir
+        wf_dir = Path(wf.workflow_dir).resolve()  # Ensure absolute path
+        st.write(f"✅ Workflow created: {wf_dir}")
+
         fasta_dest_dir = Path(wf_dir, "input-files", "fasta")
         fasta_dest_dir.mkdir(parents=True, exist_ok=True)
 
         if fasta_file is None:
-            st.error("Please upload a FASTA file before running in workspace.")
+            st.error("❌ Please upload a FASTA file before running in workspace.")
         else:
+            st.write("📤 Uploading files...")
+
             # === FILE UPLOADS ===
             # Copy FASTA file
             fasta_name = getattr(fasta_file, "name", "uploaded.fasta")
             fasta_path = Path(fasta_dest_dir, fasta_name)
             with open(fasta_path, "wb") as fh:
                 fh.write(fasta_file.getbuffer())
+            st.write(f"✅ FASTA uploaded to: {fasta_path}")
 
             # Optional: copy unimod file
             unimod_path_str = None
@@ -418,6 +426,7 @@ if st.button(
                 unimod_path_str = str(Path(unimod_dest_dir, unimod_xml_file.name))
                 with open(unimod_path_str, "wb") as fh:
                     fh.write(unimod_xml_file.getbuffer())
+                st.write(f"✅ UniMod XML uploaded to: {unimod_path_str}")
 
             # Optional: copy training data
             train_data_str = None
@@ -427,9 +436,10 @@ if st.button(
                 train_data_str = str(Path(train_dest_dir, train_data_file.name))
                 with open(train_data_str, "wb") as fh:
                     fh.write(train_data_file.getbuffer())
+                st.write(f"✅ Training data uploaded to: {train_data_str}")
 
             # === SET OUTPUT DIRECTORY ===
-            results_dir = Path(wf_dir, "results", "insilico")
+            results_dir = Path(wf_dir, "results", "insilico").resolve()  # Ensure absolute path
             results_dir.mkdir(parents=True, exist_ok=True)
             output_filename = (
                 Path(output_file).name
@@ -437,6 +447,9 @@ if st.button(
                 else "easypqp_insilico_library.tsv"
             )
             workspace_output_file = str(Path(results_dir, output_filename))
+            st.write(f"✅ Output will go to: {workspace_output_file}")
+
+            st.write("⚙️ Gathering advanced parameters...")
 
             # === GATHER PARAMETERS FROM SESSION STATE ===
             # Get advanced parameters from session state (with defaults if not set)
@@ -454,6 +467,8 @@ if st.button(
             learning_rate = st.session_state.get("adv_lr", 0.001)
             epochs = st.session_state.get("adv_epochs", 10)
             ft_batch_size = st.session_state.get("adv_ft_batch", 32)
+
+            st.write("📝 Building configuration...")
 
             # === BUILD MERGED JSON CONFIG (per JSON schema) ===
             merged_config = {
@@ -517,6 +532,7 @@ if st.button(
             config_path = Path(wf_dir, "easypqp_config.json")
             with open(config_path, "w", encoding="utf-8") as f:
                 _json.dump(merged_config, f, indent=2)
+            st.write(f"✅ Config saved to: {config_path}")
 
             # === SAVE PARAMS TO WORKFLOW PARAMETER MANAGER ===
             params_to_write = {
@@ -524,12 +540,18 @@ if st.button(
                 "output_file": workspace_output_file,
                 "write_report": bool(write_report),
             }
-            wf.parameter_manager.params_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(wf.parameter_manager.params_file, "w", encoding="utf-8") as f:
+            # Ensure params file directory exists (use absolute path for consistency)
+            params_file = Path(wf.parameter_manager.params_file).resolve()
+            params_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(params_file, "w", encoding="utf-8") as f:
                 _json.dump(params_to_write, f, indent=2)
+            st.write(f"✅ Params saved to: {params_file}")
+
+            st.write("🚀 Starting workflow process...")
 
             # === START WORKFLOW ===
             wf.start_workflow()
+            st.write("✅ Workflow process spawned")
 
             # === DISPLAY SUCCESS MESSAGE & STATUS PANEL ===
             st.success("✅ Workflow submitted! Processing in background...")
@@ -544,30 +566,154 @@ if st.button(
             with col2:
                 st.metric("Status", "Running (check logs)")
             with col3:
-                if st.button("📂 View Workspace", use_container_width=True):
-                    st.info(f"Workspace path:\n`{wf_dir}`")
+                st.metric("Progress", "Monitor below ↓")
 
-            # Display log file location
-            log_file = Path(wf_dir, "logs", "workflow.log")
-            st.info(
-                f"📋 **Logs:** `{log_file}`\n\n"
-                f"Workflow will log progress to this file. Results appear in:\n"
-                f"`{results_dir}`"
-            )
+            # Show workspace info in expandable section (not the main focus)
+            with st.expander("📂 Workspace Info", expanded=False):
+                st.write("**Workspace Location:**")
+                st.code(str(wf_dir), language="bash")
+                st.write("**Log Location:**")
+                log_file = Path(wf_dir, "logs", "workflow.log")
+                st.code(str(log_file), language="bash")
 
-            st.markdown("---")
-            st.subheader("📥 Download Results")
-            st.info(
-                "Output files will appear here once processing completes. Check back in a few moments."
-            )
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write("📊 TSV Library")
-            with col2:
-                st.write("📈 HTML Report (if generated)")
+            # === AUTO-RERUN ON COMPLETION ===
+            # Poll to check if workflow is still running
+            # When done (PID dir removed), automatically rerun to show results
+            pid_dir = wf.executor.pid_dir
+            
+            # Show a placeholder while waiting
+            progress_placeholder = st.empty()
+            
+            # Poll for workflow completion (check every 2 seconds, timeout after 15 minutes)
+            max_wait_time = 15 * 60  # 15 minutes
+            start_time = time.time()
+            poll_interval = 2  # seconds
+            
+            while time.time() - start_time < max_wait_time:
+                if not pid_dir.exists():
+                    # Workflow finished! PID directory was cleaned up
+                    progress_placeholder.info("✅ Workflow completed! Refreshing to show results...")
+                    time.sleep(1)  # Brief pause to ensure files are written
+                    st.rerun()  # Automatically rerun to show download buttons
+                    break
+                
+                # Still running - show progress
+                elapsed = int(time.time() - start_time)
+                progress_placeholder.info(f"⏳ Processing... ({elapsed}s elapsed)")
+                time.sleep(poll_interval)
+            else:
+                # Timeout reached
+                progress_placeholder.warning(
+                    "⚠️ Workflow is taking longer than expected. "
+                    "Check the logs or refresh the page to see results."
+                )
 
     except Exception as e:
-        st.error(f"Failed to start workflow: {e}")
+        st.error(f"❌ Failed to start workflow: {e}")
         st.text(traceback.format_exc())
+        st.error("📋 Full traceback shown above - please check")
+
+# =============================================================================
+# ALWAYS CHECK FOR RESULTS (outside button handler, runs on every page render)
+# =============================================================================
+st.markdown("---")
+st.subheader("📥 Download Results")
+
+# Get the default workspace path
+default_workspace = Path(st.session_state.get("workspace", ".")).resolve()
+easypqp_workspace = Path(default_workspace, "easypqp-insilico").resolve()
+results_dir = Path(easypqp_workspace, "results", "insilico").resolve()
+
+# Only show download section if the workspace exists
+if easypqp_workspace.exists() and results_dir.exists():
+    # Scan results directory for generated files
+    # Only keep files that actually exist (filter out any that were deleted or not yet created)
+    all_tsv_files = list(results_dir.glob("*.tsv"))
+    all_html_files = list(results_dir.glob("*.html"))
+    all_parquet_files = list(results_dir.glob("*.parquet"))
+    
+    tsv_files = [f for f in all_tsv_files if f.exists()]
+    html_files = [f for f in all_html_files if f.exists()]
+    report_files = [f for f in all_parquet_files if f.exists()]
+
+    if tsv_files or html_files or report_files:
+        st.success("✅ Results generated! Download below.")
+        
+        # TSV Library files
+        if tsv_files:
+            st.write("**📊 TSV Spectral Libraries:**")
+            for tsv_file in tsv_files:
+                try:
+                    col1, col2, col3 = st.columns([2, 1, 1])
+                    with col1:
+                        st.write(f"📄 {tsv_file.name}")
+                    with col2:
+                        file_size = tsv_file.stat().st_size / (1024 * 1024)  # MB
+                        st.write(f"({file_size:.1f} MB)")
+                    with col3:
+                        with open(tsv_file, "rb") as f:
+                            st.download_button(
+                                label="⬇️ Download",
+                                data=f.read(),
+                                file_name=tsv_file.name,
+                                key=f"tsv_{tsv_file.name}",
+                                use_container_width=True,
+                            )
+                except Exception as e:
+                    st.warning(f"⚠️ Could not access {tsv_file.name}: {e}")
+        
+        # HTML Report files
+        if html_files:
+            st.write("**📈 HTML Reports:**")
+            for html_file in html_files:
+                try:
+                    col1, col2, col3 = st.columns([2, 1, 1])
+                    with col1:
+                        st.write(f"📊 {html_file.name}")
+                    with col2:
+                        file_size = html_file.stat().st_size / (1024 * 1024)  # MB
+                        st.write(f"({file_size:.1f} MB)")
+                    with col3:
+                        with open(html_file, "rb") as f:
+                            st.download_button(
+                                label="⬇️ Download",
+                                data=f.read(),
+                                file_name=html_file.name,
+                                key=f"html_{html_file.name}",
+                                use_container_width=True,
+                            )
+                except Exception as e:
+                    st.warning(f"⚠️ Could not access {html_file.name}: {e}")
+        
+        # Parquet files
+        if report_files:
+            st.write("**📋 Raw Data (Parquet):**")
+            for parquet_file in report_files:
+                try:
+                    col1, col2, col3 = st.columns([2, 1, 1])
+                    with col1:
+                        st.write(f"📁 {parquet_file.name}")
+                    with col2:
+                        file_size = parquet_file.stat().st_size / (1024 * 1024)  # MB
+                        st.write(f"({file_size:.1f} MB)")
+                    with col3:
+                        with open(parquet_file, "rb") as f:
+                            st.download_button(
+                                label="⬇️ Download",
+                                data=f.read(),
+                                file_name=parquet_file.name,
+                                key=f"parquet_{parquet_file.name}",
+                                use_container_width=True,
+                            )
+                except Exception as e:
+                    st.warning(f"⚠️ Could not access {parquet_file.name}: {e}")
+    else:
+        st.info(
+            "⏳ Processing in progress... Refresh the page to check for newly generated files."
+        )
+else:
+    st.info(
+        "📂 No workspace found. Click '🚀 Run Library Generation in Workspace' above to start."
+    )
 
 save_params(params)
