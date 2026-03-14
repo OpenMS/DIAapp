@@ -298,8 +298,7 @@ if fine_tune:
         "Training Data (TSV)",
         type=["tsv"],
         help=(
-            "TSV file with columns: `sequence`, `precursor_charge`, `intensity`, "
-            "`retention_time`, and optionally `ion_mobility`."
+            "TSV file with columns: `fullpeptidename`,	`precursor_mz`,	`precursor_charge`,	`rt`,	`ion_mobility`,	`fragment_type`,	`fragment_series_number`,	`product_charge`,	`intensity`."
         ),
     )
 
