@@ -47,24 +47,6 @@ if __name__ == "__main__":
                 icon="💥",
             ),
         ],
-        "TOPP Workflow Framework": [
-            st.Page(
-                Path("content", "topp_workflow_file_upload.py"),
-                title="File Upload",
-                icon="📁",
-            ),
-            st.Page(
-                Path("content", "topp_workflow_parameter.py"),
-                title="Configure",
-                icon="⚙️",
-            ),
-            st.Page(
-                Path("content", "topp_workflow_execution.py"), title="Run", icon="🚀"
-            ),
-            st.Page(
-                Path("content", "topp_workflow_results.py"), title="Results", icon="📊"
-            ),
-        ],
         "pyOpenMS Workflow": [
             st.Page(Path("content", "file_upload.py"), title="File Upload", icon="📂"),
             st.Page(
