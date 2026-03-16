@@ -438,8 +438,53 @@ with st.expander("DDA vs DIA: comparison table"):
 """
     )
 
+# ------------------------------------
+#   SWATH scan cycle
     
-    
-    
-    
+st.markdown("---")
+st.subheader("The SWATH-MS Scan Cycle")
 
+st.markdown(
+    """
+**SWATH-MS** a widely used DIA implementation, introduced by Gillet
+*et al.* (2012) on the AB SCIEX TripleTOF platform. The name stands for
+*Sequential Window Acquisition of All Theoretical Mass Spectra*.
+
+In a single SWATH cycle the instrument:
+
+1. Acquires a full **MS1 survey scan** over the full precursor m/z range.
+2. Steps through a series of predefined **isolation windows** (e.g. 25 Da wide)
+   — fragmenting *all* co-eluting precursors within each window simultaneously.
+3. Repeats this cycle continuously across the LC gradient (~3 s cycle time).
+
+The animation below shows a SWATH cycle across the m/z range 400–1200 Da.
+The orange highlighted band (450–475 Da) represents a single isolation window.
+Each cycle produces one MS2 spectrum per window; stacking the intensity of a
+specific fragment ion across cycles yields an **Extracted Ion Chromatogram
+(XIC)**, the fundamental quantitative unit in DIA analysis.
+"""
+)
+
+dia_gif_file = "assets/swath_dia_animated.gif"
+try:
+    data_url = load_gif_b64(dia_gif_file)
+    st.markdown(
+        f'<img src="data:image/gif;base64,{data_url}" alt="SWATH DIA scan cycle animation" '
+        f'style="max-width: 100%; height: auto; border-radius: 6px;">',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "**Animation:** SWATH-MS scan cycle. The instrument sweeps isolation windows "
+        "across the m/z range each cycle. The orange band shows a single selected window "
+        "(450–475 Da). Each MS2 panel is the chimeric fragment spectrum produced for that "
+        "window. The dashed red line illustrates how stacking the signal of one fragment "
+        "ion (red) across successive MS2 scans builds an Extracted Ion Chromatogram (XIC)."
+    )
+except FileNotFoundError:
+    st.warning(
+        "Animated GIF not found at `assets/swath_dia_animated.gif`. "
+        "Place the file there to display the scan-cycle animation."
+    )    
+    
+# ------------------------------------
+#   Terminology glossary
