@@ -41,10 +41,35 @@ section on the next page.
 """
 )
 
+# Table of contents (linked to actual subheaders)
+st.markdown(
+        """
+<div style="margin-bottom:12px">
+    <strong>Table of contents</strong>
+    <ul>
+        <li><a href="#brief-ms-concepts">Brief MS Concepts</a></li>
+        <li><a href="#peptide-fragmentation">Peptide Fragmentation Example</a></li>
+        <li><a href="#annotated-ms2">Annotated MS2 spectrum</a></li>
+        <li><a href="#dda-vs-dia">Data-Dependent vs Data-Independent Acquisition</a></li>
+        <li><a href="#swath-scan-cycle">SWATH-MS Scan Cycle</a></li>
+        <li><a href="#key-terminology">Key Terminology</a></li>
+        <li><a href="#dia-data-structure">The DIA Data Structure</a></li>
+        <li><a href="#spectral-libraries">Spectral Libraries and Transitions</a></li>
+        <li><a href="#peptide-centric-workflow">The Peptide-Centric DIA Analysis Workflow</a></li>
+        <li><a href="#whats-next">What's Next?</a></li>
+        <li><a href="#references">References</a></li>
+    </ul>
+</div>
+""",
+        unsafe_allow_html=True,
+)
+
 # ------------------------------------
 #   Brief MS Concepts
 
 st.markdown("---")
+# Anchor for TOC
+st.markdown('<a id="brief-ms-concepts"></a>', unsafe_allow_html=True)
 st.subheader("Mass Spectrometry Based Proteomics: A Brief Primer")
 
 st.markdown(
@@ -76,6 +101,7 @@ identify the peptide sequence.
 
 # ===================================
 #   Peptide Fragmentation Example
+st.markdown('<a id="peptide-fragmentation"></a>', unsafe_allow_html=True)
 
 SEQUENCE = list("WNQLQAFWGTGK")
 N = len(SEQUENCE)
@@ -165,6 +191,7 @@ fig_to_st(
 
 # =====================================
 #   Annotated MS2 spectrum
+st.markdown('<a id="annotated-ms2"></a>', unsafe_allow_html=True)
 
 # We simulate the MS2 spectrum for WNQLQAFWGTGK (z=2, MW~1409 Da)
 # b-ion masses (singly charged): b1–b11 for WNQLQAFWGTGK
@@ -253,6 +280,7 @@ fig_to_st(
 #   DDA vs DIA
 
 st.markdown("---")
+st.markdown('<a id="dda-vs-dia"></a>', unsafe_allow_html=True)
 st.subheader("Data-Dependent vs Data-Independent Acquisition")
 
 st.markdown(
@@ -442,6 +470,7 @@ with st.expander("DDA vs DIA: comparison table"):
 #   SWATH scan cycle
     
 st.markdown("---")
+st.markdown('<a id="swath-scan-cycle"></a>', unsafe_allow_html=True)
 st.subheader("The SWATH-MS Scan Cycle")
 
 st.markdown(
@@ -490,6 +519,7 @@ except FileNotFoundError:
 #   Terminology glossary
 
 st.markdown("---")
+st.markdown('<a id="key-terminology"></a>', unsafe_allow_html=True)
 st.subheader("Key Terminology")
 
 terms = {
@@ -560,6 +590,7 @@ for term, definition in terms.items():
 #   DIA data structure: MS1 and MS2 peak maps
 
 st.markdown("---")
+st.markdown('<a id="dia-data-structure"></a>', unsafe_allow_html=True)
 st.subheader("The DIA Data Structure")
 
 st.markdown(
@@ -649,6 +680,7 @@ st.markdown(
 #   Spectral Libraries
 
 st.markdown("---")
+st.markdown('<a id="spectral-libraries"></a>', unsafe_allow_html=True)
 st.subheader("Spectral Libraries and Transitions")
 
 
@@ -686,6 +718,7 @@ extraction, balancing specificity against the risk of interference.
 #   Peptide-centric analysis strategy
 
 st.markdown("---")
+st.markdown('<a id="peptide-centric-workflow"></a>', unsafe_allow_html=True)
 st.subheader("The Peptide-Centric DIA Analysis Workflow")
 
 st.markdown(
@@ -870,6 +903,7 @@ fig_to_st(
 #   What's next?
 
 st.markdown("---")
+st.markdown('<a id="whats-next"></a>', unsafe_allow_html=True)
 st.subheader("What's Next?")
 
 st.success(
@@ -893,6 +927,7 @@ st.success(
 #   References
 
 st.markdown("---")
+st.markdown('<a id="references"></a>', unsafe_allow_html=True)
 st.subheader("References")
 
 st.markdown(
