@@ -299,81 +299,26 @@ def msexperiment_to_dataframe(
     df = pd.DataFrame(rows)
     return df
 
-def plot_3d_binned_xic_scatter(
+
+
+def bin_3d_trace_df(
     df: pd.DataFrame,
     rt_col: str = "rt",
     mz_col: str = "mz",
     im_col: str = "ion_mobility",
     intensity_col: str = "intensity",
-    bins: tuple[int, int, int] = (120, 120, 60),
-    intensity_agg: str = "mean",   # "mean" | "sum" | "count"
-    log_color: bool = True,
-    color_quantile_clip: tuple[float, float] | None = (0.01, 0.99),
-    marker_size: float = 4.0,
-    marker_opacity: float = 0.9,
-    title: str = "3D binned RT-m/z-ion mobility scatter",
-):
-    """
-    Plot a dense RT-m/z-ion mobility dataframe as a 3D binned scatter plot.
+    bins: tuple[int, int, int] = (100, 100, 50),
+    intensity_agg: str = "mean",
+) -> pd.DataFrame:
+    data = df[[rt_col, mz_col, im_col, intensity_col]].dropna().copy()
+    if data.empty:
+        return pd.DataFrame(columns=[rt_col, mz_col, im_col, "count", "agg_value"])
 
-    The data are voxelized in 3D:
-      x = rt
-      y = mz
-      z = ion_mobility
+    coords = data[[rt_col, mz_col, im_col]].to_numpy(dtype=float)
+    weights = data[intensity_col].to_numpy(dtype=float)
 
-    Each non-empty voxel is plotted at its bin center as a square marker.
-    Marker color is based on an aggregated intensity value per voxel.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataframe.
-    rt_col, mz_col, im_col, intensity_col : str
-        Column names.
-    bins : tuple[int, int, int]
-        Number of bins in (rt, mz, ion_mobility).
-    intensity_agg : str
-        How to aggregate intensity within each 3D bin:
-        - "mean": average intensity of points in the voxel
-        - "sum": total intensity in the voxel
-        - "count": number of points in the voxel
-    log_color : bool
-        If True, color by log10(value + 1).
-    color_quantile_clip : tuple[float, float] | None
-        Optional color clipping by quantiles to reduce the effect of outliers.
-    marker_size : float
-        Marker size for plotted voxel centers.
-    marker_opacity : float
-        Marker opacity.
-    title : str
-        Figure title.
-
-    Returns
-    -------
-    fig : plotly.graph_objects.Figure
-        Interactive Plotly figure.
-    binned_df : pd.DataFrame
-        Dataframe of non-empty voxel centers and aggregated values.
-    """
-    required = [rt_col, mz_col, im_col, intensity_col]
-    missing = [c for c in required if c not in df.columns]
-    if missing:
-        raise ValueError(f"Missing required columns: {missing}")
-
-    data = df[required].dropna().copy()
-
-    x = data[rt_col].to_numpy(dtype=float)
-    y = data[mz_col].to_numpy(dtype=float)
-    z = data[im_col].to_numpy(dtype=float)
-    w = data[intensity_col].to_numpy(dtype=float)
-
-    coords = np.column_stack([x, y, z])
-
-    # Count how many points land in each voxel
     counts, edges = np.histogramdd(coords, bins=bins)
-
-    # Weighted sum of intensity per voxel
-    intensity_sum, _ = np.histogramdd(coords, bins=edges, weights=w)
+    intensity_sum, _ = np.histogramdd(coords, bins=edges, weights=weights)
 
     if intensity_agg == "mean":
         agg = np.divide(
@@ -382,25 +327,20 @@ def plot_3d_binned_xic_scatter(
             out=np.zeros_like(intensity_sum, dtype=float),
             where=counts > 0,
         )
-        agg_label = f"mean({intensity_col})"
     elif intensity_agg == "sum":
         agg = intensity_sum
-        agg_label = f"sum({intensity_col})"
     elif intensity_agg == "count":
         agg = counts
-        agg_label = "count"
     else:
         raise ValueError("intensity_agg must be one of: 'mean', 'sum', 'count'")
 
-    # Bin centers
     x_centers = 0.5 * (edges[0][:-1] + edges[0][1:])
     y_centers = 0.5 * (edges[1][:-1] + edges[1][1:])
     z_centers = 0.5 * (edges[2][:-1] + edges[2][1:])
 
-    # Indices of non-empty bins
     ix, iy, iz = np.where(counts > 0)
 
-    binned_df = pd.DataFrame({
+    return pd.DataFrame({
         rt_col: x_centers[ix],
         mz_col: y_centers[iy],
         im_col: z_centers[iz],
@@ -408,40 +348,145 @@ def plot_3d_binned_xic_scatter(
         "agg_value": agg[ix, iy, iz],
     })
 
-    color_values = binned_df["agg_value"].to_numpy(dtype=float)
-    color_title = agg_label
+def add_binned_intensity_trace(fig, binned_df, row, col, name, cmin, cmax):
+    """
+    Add a single intensity-colored trace to the figure from binned DataFrame.
+    The binned DataFrame should have columns: 'rt', 'mz', 'ion_mobility', 'count', 'agg_value'.
+    """
+    if binned_df.empty:
+        return
 
-    if log_color:
-        color_values = np.log10(np.clip(color_values, a_min=0, a_max=None) + 1.0)
-        color_title = f"log10({agg_label} + 1)"
-
-    marker_kwargs = dict(
-        size=marker_size,
-        opacity=marker_opacity,
-        symbol="square",
-        color=color_values,
-        colorscale="Viridis",
-        colorbar=dict(title=color_title),
+    color_vals = np.log10(
+        np.clip(binned_df["agg_value"].to_numpy(dtype=float), 0, None) + 1.0
     )
 
-    if color_quantile_clip is not None and len(color_values) > 0:
-        q_low, q_high = color_quantile_clip
-        cmin, cmax = np.quantile(color_values, [q_low, q_high])
-        marker_kwargs["cmin"] = float(cmin)
-        marker_kwargs["cmax"] = float(cmax)
+    fig.add_trace(
+        go.Scatter3d(
+            x=binned_df["rt"],
+            y=binned_df["mz"],
+            z=binned_df["ion_mobility"],
+            mode="markers",
+            name=name,
+            showlegend=False,
+            marker=dict(
+                symbol="square",
+                size=4,
+                opacity=0.9,
+                color=color_vals,
+                colorscale="Viridis",
+                cmin=float(cmin),
+                cmax=float(cmax),
+                showscale=False,   # hide intensity colorbar
+                line=dict(width=0),
+            ),
+            customdata=np.stack(
+                [
+                    binned_df["count"].to_numpy(dtype=float),
+                    binned_df["agg_value"].to_numpy(dtype=float),
+                ],
+                axis=-1,
+            ),
+            hovertemplate=(
+                "rt: %{x:.4f}<br>"
+                "mz: %{y:.4f}<br>"
+                "ion_mobility: %{z:.4f}<br>"
+                "count: %{customdata[0]:.0f}<br>"
+                "mean(intensity): %{customdata[1]:.4f}"
+                "<extra></extra>"
+            ),
+        ),
+        row=row,
+        col=col,
+    )
+    
+def add_binned_annotation_traces(
+    fig,
+    df: pd.DataFrame,
+    row: int,
+    col: int,
+    annotation_col: str = "annotation",
+    rt_col: str = "rt",
+    mz_col: str = "mz",
+    im_col: str = "ion_mobility",
+    intensity_col: str = "intensity",
+    bins: tuple[int, int, int] = (100, 100, 50),
+    intensity_agg: str = "mean",
+    log_color: bool = True,
+    color_quantile_clip: tuple[float, float] | None = (0.01, 0.99),
+    marker_size: float = 4.0,
+    marker_opacity: float = 0.9,
+):
+    """
+    Add one real intensity-colored trace per annotation, plus one dummy legend trace
+    per annotation so the legend toggles annotations without changing plot coloring.
+    """
+    if annotation_col not in df.columns:
+        raise ValueError(f"Missing annotation column: {annotation_col}")
 
-    fig = go.Figure(
-        data=[
+    grouped = []
+    for ann, subdf in df.groupby(annotation_col, sort=True):
+        binned = bin_3d_trace_df(
+            subdf,
+            rt_col=rt_col,
+            mz_col=mz_col,
+            im_col=im_col,
+            intensity_col=intensity_col,
+            bins=bins,
+            intensity_agg=intensity_agg,
+        )
+        if not binned.empty:
+            binned["_annotation"] = str(ann)
+            grouped.append(binned)
+
+    if not grouped:
+        return fig
+
+    all_binned = pd.concat(grouped, ignore_index=True)
+
+    all_color = all_binned["agg_value"].to_numpy(dtype=float)
+    if log_color:
+        all_color = np.log10(np.clip(all_color, 0, None) + 1.0)
+
+    if color_quantile_clip is not None and len(all_color) > 0:
+        q_low, q_high = color_quantile_clip
+        cmin, cmax = np.quantile(all_color, [q_low, q_high])
+    else:
+        cmin, cmax = float(np.min(all_color)), float(np.max(all_color))
+
+    # real traces: intensity-colored, no legend
+    annotations = list(all_binned["_annotation"].unique())
+    for ann in annotations:
+        sub = all_binned[all_binned["_annotation"] == ann].copy()
+
+        color_values = sub["agg_value"].to_numpy(dtype=float)
+        if log_color:
+            color_values = np.log10(np.clip(color_values, 0, None) + 1.0)
+
+        fig.add_trace(
             go.Scatter3d(
-                x=binned_df[rt_col],
-                y=binned_df[mz_col],
-                z=binned_df[im_col],
+                x=sub[rt_col],
+                y=sub[mz_col],
+                z=sub[im_col],
                 mode="markers",
-                marker=marker_kwargs,
+                name=ann,
+                legendgroup=ann,
+                showlegend=False,
+                marker=dict(
+                    symbol="square",
+                    size=marker_size,
+                    opacity=marker_opacity,
+                    color=color_values,
+                    colorscale="Viridis",
+                    cmin=float(cmin),
+                    cmax=float(cmax),
+                    showscale=False,
+                    line=dict(width=0),
+                ),
                 customdata=np.stack(
                     [
-                        binned_df["count"].to_numpy(dtype=float),
-                        binned_df["agg_value"].to_numpy(dtype=float),
+                        sub["count"].to_numpy(dtype=float),
+                        sub["agg_value"].to_numpy(dtype=float),
+                        sub["_annotation"].to_numpy(dtype=object),
                     ],
                     axis=-1,
                 ),
@@ -450,22 +495,41 @@ def plot_3d_binned_xic_scatter(
                     f"{mz_col}: %{{y:.4f}}<br>"
                     f"{im_col}: %{{z:.4f}}<br>"
                     "count: %{customdata[0]:.0f}<br>"
-                    f"{agg_label}: %{{customdata[1]:.4f}}"
+                    f"{intensity_agg}({intensity_col}): %{{customdata[1]:.4f}}<br>"
+                    "annotation: %{customdata[2]}"
                     "<extra></extra>"
                 ),
-            )
-        ]
-    )
+            ),
+            row=row,
+            col=col,
+        )
 
-    fig.update_layout(
-        title=title,
-        template="plotly_white",
-        scene=dict(
-            xaxis_title=rt_col,
-            yaxis_title=mz_col,
-            zaxis_title=im_col,
-        ),
-        margin=dict(l=0, r=0, b=0, t=40),
-    )
+    # dummy traces: legend only
+    dummy_colors = [
+        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+    ]
 
-    return fig, binned_df
+    for i, ann in enumerate(annotations):
+        fig.add_trace(
+            go.Scatter3d(
+                x=[None],
+                y=[None],
+                z=[None],
+                mode="markers",
+                name=ann,
+                legendgroup=ann,
+                showlegend=True,
+                hoverinfo="skip",
+                marker=dict(
+                    symbol="square",
+                    size=6,
+                    color=dummy_colors[i % len(dummy_colors)],
+                    opacity=1.0,
+                ),
+            ),
+            row=row,
+            col=col,
+        )
+
+    return fig
