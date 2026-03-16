@@ -242,15 +242,204 @@ fig_to_st(
     caption=(
         "Simulated MS2 spectrum for WNQLQAFWGTGK. Matched b-ions are shown in blue, "
         "y-ions in red; unmatched peaks (grey) represent co-fragmented peptides or "
-        "chemical noise — common in real DIA data where multiple precursors are "
+        "chemical noise, common in real DIA data where multiple precursors are "
         "fragmented together. Identifying a peptide from this spectrum requires matching "
         "the observed ion pattern against a spectral library or database."
     ),
 )
 
 
+# ------------------------------------
+#   DDA vs DIA
+
+st.markdown("---")
+st.subheader("2. Data-Dependent vs Data-Independent Acquisition")
+
+st.markdown(
+    """
+Historically, the dominant tandem-MS strategy was **Data-Dependent Acquisition
+(DDA)**, also called *shotgun proteomics*. In DDA the instrument monitors the
+MS1 spectrum and selects the **top N most abundant precursors** in each cycle
+for fragmentation. While straightforward, DDA has two fundamental limitations:
+
+1. **Stochastic sampling** — whether a given peptide is selected for
+   fragmentation depends on its abundance relative to co-eluting peptides.
+   Low-abundance peptides may never be sampled across replicate runs,
+   producing poor quantitative reproducibility.
+2. **Undersampling** — in complex samples a typical cycle time of 1–3 s can
+   only fragment ~10–20 precursors, leaving the vast majority unsequenced.
+
+**Data-Independent Acquisition (DIA)**, of which **SWATH-MS** (Sequential
+Window Acquisition of All Theoretical Mass Spectra) is a widely adopted
+implementation and was introduced to overcome both limitations
+(Gillet *et al.*, 2012; Röst *et al.*, 2014).
+"""
+)
+
+# ===================================
+# DDA vs DIA figure
+
+_rng_shared = np.random.default_rng(42)
+N_PEPS    = 28
+PEP_RT    = _rng_shared.uniform(0.8, 9.0, N_PEPS)
+PEP_MZ    = _rng_shared.uniform(0.9, 7.8, N_PEPS)
+PEP_INT   = _rng_shared.exponential(0.5, N_PEPS) + 0.15
+PEP_INT  /= PEP_INT.max()
+
+def draw_isotope_traces(ax, rt_c, mz_c, intensity, color="#333333"):
+    """
+    Draw a clearly visible 3-isotope cluster at (rt_c, mz_c).
+    Each isotope peak is a short vertical line (ax.plot), sized
+    proportionally to intensity so high-abundance peptides stand out.
+    The three isotopes are spaced 0.20 m/z-units apart (in display coords).
+    """
+    ISO_SEP  = 0.20   # m/z gap between isotope peaks (display units)
+    MAX_H    = 0.70   # max height of the M+0 peak (display units)
+    ISO_REL  = [1.00, 0.60, 0.28]   # relative heights of M, M+1, M+2
+    LW_BASE  = 2.5    # base line width
+    ALPHA    = [0.95, 0.75, 0.50]   # alpha per isotope
+
+    for k, (rel, alp) in enumerate(zip(ISO_REL, ALPHA)):
+        h   = MAX_H * intensity * rel
+        mz_k = mz_c + k * ISO_SEP
+        lw  = (LW_BASE + intensity * 1.8) * (1.0 - k * 0.20)
+        ax.plot([rt_c, rt_c], [mz_k, mz_k + h],
+                color=color, lw=lw, alpha=alp, solid_capstyle="butt", zorder=3)
+
+def draw_acquisition_panel(ax, mode="DDA"):
+    # Plot area: x=0–10 (RT), y=0–8.5 (m/z)
+    ax.set_xlim(-0.3, 10.5)
+    ax.set_ylim(-1.2, 8.8)
+    ax.axis("off")
+
+    # Axes arrows 
+    ax.annotate("", xy=(9.9, 0.3), xytext=(0.2, 0.3),
+                arrowprops=dict(arrowstyle="->", color="black", lw=1.5))
+    ax.text(5.0, -0.25, "Retention Time", ha="center", fontsize=9.5)
+    ax.annotate("", xy=(0.3, 8.5), xytext=(0.3, 0.3),
+                arrowprops=dict(arrowstyle="->", color="black", lw=1.5))
+    ax.text(-0.05, 4.4, "m/z", ha="center", fontsize=9.5, rotation=90)
+
+    # Isotopic traces for each peptide 
+    for rt, mz, inten in zip(PEP_RT, PEP_MZ, PEP_INT):
+        shade = int(30 + (0.15 + inten * 0.55) * 200)
+        draw_isotope_traces(ax, rt, mz, inten,
+                            color=f"#{shade:02x}{shade:02x}{shade:02x}")
+
+    if mode == "DDA":
+        #  Top-4 selection boxes 
+        top_idx    = np.argsort(PEP_INT)[::-1][:4]
+        missed_idx = np.argsort(PEP_INT)[:6]
+        for idx in top_idx:
+            rt, mz = PEP_RT[idx], PEP_MZ[idx]
+            ax.add_patch(mpatches.FancyBboxPatch(
+                (rt - 0.42, mz - 0.30), 0.84, 0.60,
+                boxstyle="round,pad=0.06",
+                edgecolor="#E63333", facecolor="none", lw=1.6, zorder=5))
+        for idx in missed_idx:
+            ax.scatter(PEP_RT[idx], PEP_MZ[idx] + 0.22, marker="x",
+                       color="#CC7777", s=22, zorder=6, lw=1.2)
+        ax.text(4.7, -0.7, "✗ = below detection threshold (missed)",
+                ha="center", fontsize=7.5, color="#CC7777", style="italic")
+
+    else:  # DIA
+        # Equal-height isolation windows 
+        # 5 equal windows covering m/z 0.8 – 8.0 = width 1.44 each
+        WIN_LO = 0.80; WIN_HI = 8.00
+        N_WIN  = 5
+        win_edges = np.linspace(WIN_LO, WIN_HI, N_WIN + 1)
+        win_colors = ["#FFF3E0", "#E8F0FF", "#F0FFF4", "#FFF0F0", "#F5F0FF"]
+
+        # RT cycle edges
+        cycle_edges = np.linspace(0.5, 9.6, 7)
+
+        for c_i in range(len(cycle_edges) - 1):
+            cx0, cx1 = cycle_edges[c_i], cycle_edges[c_i + 1]
+            # One double-headed arrow per window per cycle, equally spaced in x
+            arrow_xs = np.linspace(cx0 + 0.12, cx1 - 0.12, N_WIN)
+            for w_i in range(N_WIN):
+                wlo = win_edges[w_i]
+                whi = win_edges[w_i + 1]
+                xmid = arrow_xs[w_i]
+                ax.annotate("", xy=(xmid, whi - 0.10), xytext=(xmid, wlo + 0.10),
+                            arrowprops=dict(arrowstyle="<->", color="#777777",
+                                            lw=0.9, mutation_scale=7),
+                            zorder=5)
+
+# Build the 2-panel figure 
+fig_acq, axes_acq = plt.subplots(
+    1, 2, figsize=(12.5, 5.5),
+    gridspec_kw={"left": 0.04, "right": 0.98, "top": 0.82, "bottom": 0.12,
+                 "wspace": 0.10}
+)
 
 
+for ax_, mode_ in zip(axes_acq, ["DDA", "DIA"]):
+    draw_acquisition_panel(ax_, mode_)
 
+# Titles and subtitles as suptitle / axes titles (no text inside the plot)
+axes_acq[0].set_title(
+    "Data-Dependent Acquisition (DDA)\n"
+    r"$\it{Top\text{-}N\ stochastic\ selection\ —\ low\text{-}abundance\ peptides\ missed}$",
+    fontsize=10.5, fontweight="bold", color="#333333", pad=8, loc="center"
+)
+axes_acq[1].set_title(
+    "Data-Independent Acquisition (DIA / SWATH)\n"
+    r"$\it{All\ windows\ fragmented\ every\ cycle\ —\ complete\ coverage}$",
+    fontsize=10.5, fontweight="bold", color="#333333", pad=8, loc="center"
+)
 
+# Legend for DDA panel
+from matplotlib.lines import Line2D as _Line2D
+b_sel  = mpatches.Patch(facecolor="none", edgecolor="#E63333", lw=1.5,
+                         label="Selected (top-N)")
+b_miss = _Line2D([0], [0], marker="x", color="#CC7777", lw=0,
+                  markersize=7, label="Missed (too dim)")
+axes_acq[0].legend(handles=[b_sel, b_miss], fontsize=8, loc="lower right",
+                   framealpha=0.8)
+
+fig_to_st(
+    fig_acq,
+    caption=(
+        "Both panels show the same set of peptide precursor ions (isotopic traces, "
+        "grey shading encodes abundance). "
+        "**DDA (left):** only the top-N most abundant features are selected for "
+        "fragmentation each cycle (red boxes); dimmer peptides (✗) are missed. "
+        "**DIA (right):** equal-width isolation windows sweep the full m/z range "
+        "every cycle — every precursor is fragmented regardless of abundance."
+    ),
+)
+
+st.markdown(
+    """
+The key conceptual shift in DIA is that **the question changes**: instead of
+asking *"what is in this spectrum?"* (as in DDA database search), we ask
+*"is my peptide of interest present, and how much of it is there?"*
+This hypothesis-driven, **peptide-centric** approach requires a
+**spectral library** but results in improved
+quantitative reproducibility and sensitivity (Röst *et al.*, 2014;
+Demichev *et al.*, 2020).
+"""
+)
+
+with st.expander("DDA vs DIA: comparison table"):
+    st.markdown(
+        """
+| Property | DDA | DIA / SWATH |
+|---|---|---|
+| Precursor selection | Stochastic (top-N) | Systematic (all windows) |
+| Run-to-run reproducibility | Low–Medium | High |
+| Sensitivity for low-abundance peptides | Limited | Improved |
+| Chimeric MS2 spectra | Rare | Common (by design) |
+| Data analysis approach | Database search | Targeted extraction + scoring |
+| Quantification | Label-free (PSM counts / intensity) | XIC peak areas |
+| Requires spectral library | No | Yes (typically) |
+| Software examples | Sage, MaxQuant, MSFragger | OpenSWATH, DIA-NN, Spectronaut |
+"""
+    )
+
+    
+    
+    
+    
 
