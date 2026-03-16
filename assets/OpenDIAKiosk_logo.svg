@@ -7,6 +7,9 @@
    id="svg163"
    sodipodi:docname="OpenDIAKiosk_logo.svg"
    inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   inkscape:export-filename="OpenDIAKiosk_logo.png"
+   inkscape:export-xdpi="200"
+   inkscape:export-ydpi="200"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -21,14 +24,14 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      showgrid="false"
-     inkscape:zoom="3.4231221"
-     inkscape:cx="229.32282"
-     inkscape:cy="104.29076"
-     inkscape:window-width="2560"
-     inkscape:window-height="1371"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
-     inkscape:window-maximized="1"
+     inkscape:zoom="4.8410257"
+     inkscape:cx="79.735169"
+     inkscape:cy="74.984109"
+     inkscape:window-width="2544"
+     inkscape:window-height="1327"
+     inkscape:window-x="20"
+     inkscape:window-y="20"
+     inkscape:window-maximized="0"
      inkscape:current-layer="svg163" />
   <defs
      id="defs5">
@@ -47,14 +50,6 @@
      r="79"
      fill="#1d9e75"
      id="circle7" />
-  <circle
-     cx="82"
-     cy="82"
-     r="79"
-     fill="none"
-     stroke="#085041"
-     stroke-width="2"
-     id="circle9" />
   <g
      clip-path="url(#bg-clip)"
      id="g27"
@@ -117,84 +112,12 @@
        opacity="0.38"
        id="line25" />
   </g>
-  <circle
-     cx="82"
-     cy="82"
-     r="74"
-     fill="none"
-     stroke="#ffffff"
-     stroke-width="0.6"
-     opacity="0.16"
-     id="circle31" />
   <!-- Cycle 1: x 35, 46, 57, 68 -->
-  <g
-     opacity="0.6"
-     id="g47"
-     transform="translate(-16,-15)">
-    <line
-       x1="46"
-       y1="82"
-       x2="46"
-       y2="68"
-       stroke="#ffffff"
-       stroke-width="1.4"
-       id="line41" />
-    <polygon
-       points="49,82 46,88 43,82 "
-       fill="#ffffff"
-       id="polygon43" />
-    <polygon
-       points="49,68 46,62 43,68 "
-       fill="#ffffff"
-       id="polygon45" />
-  </g>
-  <g
-     opacity="0.96"
-     id="g55"
-     transform="translate(-16,-15)">
-    <line
-       x1="57"
-       y1="110"
-       x2="57"
-       y2="96"
-       stroke="#ef9f27"
-       stroke-width="1.7"
-       id="line49" />
-    <polygon
-       points="60,110 57,116 54,110 "
-       fill="#ef9f27"
-       id="polygon51" />
-    <polygon
-       points="60,96 57,90 54,96 "
-       fill="#ef9f27"
-       id="polygon53" />
-  </g>
-  <g
-     opacity="0.8"
-     id="g63"
-     transform="translate(-16,-15)">
-    <line
-       x1="68"
-       y1="138"
-       x2="68"
-       y2="124"
-       stroke="#ffffff"
-       stroke-width="1.4"
-       id="line57" />
-    <polygon
-       points="71,138 68,144 65,138 "
-       fill="#ffffff"
-       id="polygon59" />
-    <polygon
-       points="71,124 68,118 65,124 "
-       fill="#ffffff"
-       id="polygon61" />
-  </g>
   <!-- Cycle 2: x 78, 89, 100, 111 -->
   <g
      opacity="0.42"
      id="g71"
-     transform="translate(-16,-15)">
+     transform="matrix(-1,0,0,1,173,-15)">
     <line
        x1="78"
        y1="53"
@@ -204,18 +127,18 @@
        stroke-width="1.4"
        id="line65" />
     <polygon
-       points="81,53 78,59 75,53 "
+       points="78,59 75,53 81,53 "
        fill="#ffffff"
        id="polygon67" />
     <polygon
-       points="81,39 78,33 75,39 "
+       points="78,33 75,39 81,39 "
        fill="#ffffff"
        id="polygon69" />
   </g>
   <g
      opacity="0.6"
      id="g79"
-     transform="translate(-16,-15)">
+     transform="matrix(-1,0,0,1,173,-15)">
     <line
        x1="89"
        y1="82"
@@ -225,18 +148,18 @@
        stroke-width="1.4"
        id="line73" />
     <polygon
-       points="92,82 89,88 86,82 "
+       points="89,88 86,82 92,82 "
        fill="#ffffff"
        id="polygon75" />
     <polygon
-       points="92,68 89,62 86,68 "
+       points="89,62 86,68 92,68 "
        fill="#ffffff"
        id="polygon77" />
   </g>
   <g
      opacity="0.96"
      id="g87"
-     transform="translate(-16,-15)">
+     transform="matrix(-1,0,0,1,173,-15)">
     <line
        x1="100"
        y1="110"
@@ -246,18 +169,18 @@
        stroke-width="1.7"
        id="line81" />
     <polygon
-       points="103,110 100,116 97,110 "
+       points="100,116 97,110 103,110 "
        fill="#ef9f27"
        id="polygon83" />
     <polygon
-       points="103,96 100,90 97,96 "
+       points="100,90 97,96 103,96 "
        fill="#ef9f27"
        id="polygon85" />
   </g>
   <g
      opacity="0.8"
      id="g95"
-     transform="translate(-16,-15)">
+     transform="matrix(-1,0,0,1,173,-15)">
     <line
        x1="111"
        y1="138"
@@ -267,11 +190,11 @@
        stroke-width="1.4"
        id="line89" />
     <polygon
-       points="114,138 111,144 108,138 "
+       points="111,144 108,138 114,138 "
        fill="#ffffff"
        id="polygon91" />
     <polygon
-       points="114,124 111,118 108,124 "
+       points="111,118 108,124 114,124 "
        fill="#ffffff"
        id="polygon93" />
   </g>
@@ -279,7 +202,7 @@
   <g
      opacity="0.42"
      id="g103"
-     transform="translate(-16,-15)">
+     transform="matrix(-1,0,0,1,259,-15)">
     <line
        x1="121"
        y1="53"
@@ -289,18 +212,18 @@
        stroke-width="1.4"
        id="line97" />
     <polygon
-       points="124,53 121,59 118,53 "
+       points="121,59 118,53 124,53 "
        fill="#ffffff"
        id="polygon99" />
     <polygon
-       points="124,39 121,33 118,39 "
+       points="121,33 118,39 124,39 "
        fill="#ffffff"
        id="polygon101" />
   </g>
   <g
      opacity="0.6"
      id="g111"
-     transform="translate(-16,-15)">
+     transform="matrix(-1,0,0,1,259,-15)">
     <line
        x1="132"
        y1="82"
@@ -310,18 +233,18 @@
        stroke-width="1.4"
        id="line105" />
     <polygon
-       points="135,82 132,88 129,82 "
+       points="132,88 129,82 135,82 "
        fill="#ffffff"
        id="polygon107" />
     <polygon
-       points="135,68 132,62 129,68 "
+       points="132,62 129,68 135,68 "
        fill="#ffffff"
        id="polygon109" />
   </g>
   <g
      opacity="0.96"
      id="g119"
-     transform="translate(-16,-15)">
+     transform="matrix(-1,0,0,1,259,-15)">
     <line
        x1="143"
        y1="110"
@@ -331,18 +254,18 @@
        stroke-width="1.7"
        id="line113" />
     <polygon
-       points="146,110 143,116 140,110 "
+       points="143,116 140,110 146,110 "
        fill="#ef9f27"
        id="polygon115" />
     <polygon
-       points="146,96 143,90 140,96 "
+       points="143,90 140,96 146,96 "
        fill="#ef9f27"
        id="polygon117" />
   </g>
   <g
      opacity="0.8"
      id="g127"
-     transform="translate(-16,-15)">
+     transform="matrix(-1,0,0,1,259,-15)">
     <line
        x1="154"
        y1="138"
@@ -352,36 +275,25 @@
        stroke-width="1.4"
        id="line121" />
     <polygon
-       points="157,138 154,144 151,138 "
+       points="154,144 151,138 157,138 "
        fill="#ffffff"
        id="polygon123" />
     <polygon
-       points="157,124 154,118 151,124 "
+       points="154,118 151,124 157,124 "
        fill="#ffffff"
        id="polygon125" />
   </g>
-  <!-- Cycle 4 partial overflow: x 164, 175, 186 -->
   <g
-     opacity="0.35"
-     id="g135"
-     transform="translate(-16,-15)">
-    <line
-       x1="164"
-       y1="82"
-       x2="164"
-       y2="68"
-       stroke="#ffffff"
-       stroke-width="1.2"
-       id="line129" />
-    <polygon
-       points="167,82 164,88 161,82 "
-       fill="#ffffff"
-       id="polygon131" />
-    <polygon
-       points="167,68 164,62 161,68 "
-       fill="#ffffff"
-       id="polygon133" />
+     opacity="0.8"
+     id="g127-8"
+     transform="matrix(-1,0,0,1,303.23325,-15.110436)">
+    <path
+       id="polygon125-2"
+       style="fill:#ffffff"
+       d="M 154.44588,124 H 154.41612 157 l -3,-6 -1.02364,2.04729 z"
+       sodipodi:nodetypes="cccccc" />
   </g>
+  <!-- Cycle 4 partial overflow: x 164, 175, 186 -->
   <g
      opacity="0.55"
      id="g151"
@@ -427,4 +339,105 @@
      font-family="sans-serif"
      fill="#888780"
      id="text161">Data-Independent Acquisition Information Hub</text>
+  <g
+     opacity="0.42"
+     id="g71-3"
+     transform="matrix(-1,0,0,1,131.71275,-14.70367)">
+    <line
+       x1="78"
+       y1="53"
+       x2="78"
+       y2="39"
+       stroke="#ffffff"
+       stroke-width="1.4"
+       id="line65-6" />
+    <polygon
+       points="81,53 78,59 75,53 "
+       fill="#ffffff"
+       id="polygon67-7" />
+    <polygon
+       points="81,39 78,33 75,39 "
+       fill="#ffffff"
+       id="polygon69-5" />
+  </g>
+  <g
+     opacity="0.6"
+     id="g79-3"
+     transform="matrix(-1,0,0,1,131.71275,-14.70367)">
+    <line
+       x1="89"
+       y1="82"
+       x2="89"
+       y2="68"
+       stroke="#ffffff"
+       stroke-width="1.4"
+       id="line73-5" />
+    <polygon
+       points="92,82 89,88 86,82 "
+       fill="#ffffff"
+       id="polygon75-6" />
+    <polygon
+       points="92,68 89,62 86,68 "
+       fill="#ffffff"
+       id="polygon77-2" />
+  </g>
+  <g
+     opacity="0.96"
+     id="g87-9"
+     transform="matrix(-1,0,0,1,131.71275,-14.70367)">
+    <line
+       x1="100"
+       y1="110"
+       x2="100"
+       y2="96"
+       stroke="#ef9f27"
+       stroke-width="1.7"
+       id="line81-1" />
+    <polygon
+       points="103,110 100,116 97,110 "
+       fill="#ef9f27"
+       id="polygon83-2" />
+    <polygon
+       points="103,96 100,90 97,96 "
+       fill="#ef9f27"
+       id="polygon85-7" />
+  </g>
+  <g
+     opacity="0.8"
+     id="g95-0"
+     transform="matrix(-1,0,0,1,131.71275,-14.70367)">
+    <g
+       id="line89-9">
+      <path
+         style="color:#000000;fill:#000000;stroke-width:1.4;-inkscape-stroke:none"
+         d="M 111,138 V 124"
+         id="path1096" />
+      <path
+         style="color:#000000;fill:#ffffff;-inkscape-stroke:none"
+         d="m 110.30078,124 v 11.6394 l 1.39844,-2.25944 V 124 Z"
+         id="path1098"
+         sodipodi:nodetypes="ccccc" />
+    </g>
+    <polygon
+       points="114,124 111,118 108,124 "
+       fill="#ffffff"
+       id="polygon93-6" />
+  </g>
+  <circle
+     cx="82"
+     cy="82"
+     r="74"
+     fill="none"
+     stroke="#ffffff"
+     stroke-width="0.6"
+     opacity="0.16"
+     id="circle31" />
+  <circle
+     cx="82"
+     cy="82"
+     r="79"
+     fill="none"
+     stroke="#085041"
+     stroke-width="2"
+     id="circle9" />
 </svg>
