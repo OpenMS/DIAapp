@@ -682,3 +682,191 @@ extraction, balancing specificity against the risk of interference.
 """
 )
 
+# ------------------------------------
+#   Peptide-centric analysis strategy
+
+st.markdown("---")
+st.subheader("The Peptide-Centric DIA Analysis Workflow")
+
+st.markdown(
+    """
+Because DIA MS2 spectra are chimeric (containing fragments from many
+co-eluting precursors), standard spectral library search tools developed
+for DDA cannot be applied directly. Instead, DIA data are analysed using a
+**targeted, peptide-centric** strategy pioneered by OpenSWATH
+(Röst *et al.*, 2014). The workflow has five main steps:
+"""
+)
+
+# Workflow diagram 
+STEPS = [
+    ("1\nSpectral\nLibrary",    "#4A90D9",  "Reference b/y ions\nfor each peptide"),
+    ("2\nTargeted\nExtraction", "#5BAD72",  "XIC per transition\nwithin RT window"),
+    ("3\nPeak\nDetection",      "#E8A838",  "Find co-eluting\nchromatographic peaks"),
+    ("4\nScoring",              "#D95A4A",  "XIC correlation\n+ spectral angle"),
+    ("5\nFDR\nControl",         "#9B59B6",  "Target–decoy\n1% FDR threshold"),
+]
+
+fig_wf, ax_wf = plt.subplots(figsize=(12, 2.8))
+ax_wf.set_xlim(0, 12); ax_wf.set_ylim(0, 2.8); ax_wf.axis("off")
+
+box_w, box_h = 1.8, 1.4
+xs_wf = np.linspace(0.8, 9.8, len(STEPS))
+
+for i, ((label, color, subtitle), x) in enumerate(zip(STEPS, xs_wf)):
+    ax_wf.add_patch(mpatches.FancyBboxPatch(
+        (x - box_w/2, 0.7), box_w, box_h,
+        boxstyle="round,pad=0.12",
+        facecolor=color, edgecolor="white", lw=1.5, alpha=0.90, zorder=3))
+    ax_wf.text(x, 1.38, label, ha="center", va="center",
+               fontsize=9, fontweight="bold", color="white", zorder=4,
+               linespacing=1.3)
+    ax_wf.text(x, 0.45, subtitle, ha="center", va="top",
+               fontsize=7.5, color="#444444", linespacing=1.3, zorder=4)
+    # Fixed arrowstyle: '->' is universally supported
+    if i < len(STEPS) - 1:
+        x_next = xs_wf[i + 1]
+        ax_wf.annotate(
+            "", xy=(x_next - box_w/2 - 0.05, 1.38),
+            xytext=(x + box_w/2 + 0.05, 1.38),
+            arrowprops=dict(arrowstyle="->", color="#555555",
+                            lw=1.8, mutation_scale=16),
+            zorder=5,
+        )
+
+ax_wf.text(6.0, 2.65, "Peptide-Centric DIA Analysis Workflow",
+           ha="center", va="top", fontsize=11, fontweight="bold", color="#222222")
+fig_wf.tight_layout()
+fig_to_st(fig_wf, caption="The peptide-centric DIA analysis pipeline.")
+
+st.markdown(
+    """
+### Step-by-step overview
+
+**Step 1 — Spectral Library Query**  
+For each peptide in the library, the expected **precursor m/z** is used to
+identify which **DIA isolation window** contains that peptide in each LC
+gradient. The target **retention time** (converted from iRT) is used to
+define a narrow **RT extraction window** (e.g. ± 5 min around the predicted RT).
+
+**Step 2 — Targeted XIC Extraction**  
+Within the identified isolation window and RT window, the signal at each
+**fragment ion m/z ± tolerance** (typically 10–20 ppm or 0.01–0.05 Da) is
+extracted scan by scan to build one **XIC per transition**.
+
+**Step 3 — Peak Detection**  
+The extracted XICs are summed and smoothed (e.g. Gaussian or Savitzky–Golay
+filter), and candidate chromatographic peaks are identified using algorithms
+such as wavelet decomposition (OpenSWATH) or learned peak detectors (DreamDIA).
+For a true detection, all transitions should produce **co-eluting peaks at
+the same retention time**.
+
+**Step 4 — Scoring**  
+Each candidate peak group is scored using a set of orthogonal features:
+"""
+)
+
+st.markdown(
+    """
+| Score feature | Description |
+|---|---|
+| **XIC correlation** | Mean pairwise Pearson correlation of transitions in the peak window — high if they co-elute |
+| **Normalised spectral angle** | Cosine similarity between observed peak-apex intensities and library intensities |
+| **RT deviation** | Distance between detected apex RT and library-predicted RT |
+| **Peak shape score** | How Gaussian-like / symmetric the summed XIC peak is |
+| **Intensity rank** | Relative intensity of the detected peak vs background |
+
+These features are combined into a single discriminant score (e.g. using
+**PyProphet** / OpenSWATH's semi-supervised learning, or DIA-NN's neural
+network) to maximally separate true from false detections.
+
+**Step 5 — FDR Control via Target–Decoy Competition**  
+For every target peptide a matched **decoy** (typically a shuffled or reversed
+sequence) is also extracted and scored. Since decoys cannot be real peptides,
+any surviving decoy detection represents a false positive. The FDR at a given
+score threshold is estimated as:
+
+$$\\text{FDR}(s) = \\frac{\\#\\text{decoys passing score } s}{\\#\\text{targets passing score } s}$$
+
+Identifications are reported at a **1% FDR** threshold, meaning at most 1 in
+100 reported peptides is expected to be a false positive.
+"""
+)
+
+# XIC + scoring concept figure 
+fig_xic, axes_xic = plt.subplots(1, 3, figsize=(12, 3.5))
+
+t_xic  = np.linspace(0, 10, 500)
+APEX   = 5.0; SIGMA_XIC = 0.65
+frag_colors_xic = ["#CC1111", "#1199CC", "#22AA33", "#DD8800", "#8833CC"]
+frag_amps_xic   = [1.00, 0.72, 0.55, 0.40, 0.28]
+frag_labels_xic = ["y5", "y4", "y3", "b4", "b3"]
+rng3 = np.random.default_rng(55)
+
+xic_signals = []
+for amp, col, lbl in zip(frag_amps_xic, frag_colors_xic, frag_labels_xic):
+    signal = amp * np.exp(-((t_xic - APEX)**2) / (2 * SIGMA_XIC**2))
+    noise  = rng3.exponential(0.04, len(t_xic))
+    xic    = signal + noise
+    xic_signals.append(xic)
+    axes_xic[0].plot(t_xic, xic, color=col, lw=1.6, alpha=0.85, label=lbl)
+
+axes_xic[0].axvline(APEX, color="black", lw=1.5, linestyle="--", alpha=0.7)
+axes_xic[0].set_title("Step 2–3: Extracted XICs\n& Peak Detection", fontsize=9.5)
+axes_xic[0].set_xlabel("Retention Time (min)", fontsize=9)
+axes_xic[0].set_ylabel("Intensity", fontsize=9)
+axes_xic[0].legend(fontsize=7.5, ncol=2, loc="upper right")
+axes_xic[0].spines["top"].set_visible(False)
+axes_xic[0].spines["right"].set_visible(False)
+
+lib_ints_sa  = np.array(frag_amps_xic)
+obs_ints_sa  = np.array([x[np.argmin(np.abs(t_xic - APEX))] for x in xic_signals])
+obs_ints_sa /= obs_ints_sa.max()
+x_bars = np.arange(len(frag_labels_xic))
+axes_xic[1].bar(x_bars - 0.2, lib_ints_sa, width=0.38, color="#888888",
+                alpha=0.7, label="Library", edgecolor="white")
+axes_xic[1].bar(x_bars + 0.2, obs_ints_sa, width=0.38, color="#E05533",
+                alpha=0.8, label="Observed", edgecolor="white")
+axes_xic[1].set_xticks(x_bars)
+axes_xic[1].set_xticklabels(frag_labels_xic, fontsize=9)
+axes_xic[1].set_title("Step 4a: Spectral Angle\n(Library vs Observed)", fontsize=9.5)
+axes_xic[1].set_ylabel("Relative Intensity", fontsize=9)
+axes_xic[1].legend(fontsize=8)
+axes_xic[1].spines["top"].set_visible(False)
+axes_xic[1].spines["right"].set_visible(False)
+
+rng4 = np.random.default_rng(77)
+target_scores = np.clip(rng4.normal(0.72, 0.14, 500), 0, 1)
+decoy_scores  = np.clip(rng4.normal(0.38, 0.16, 500), 0, 1)
+bins_s = np.linspace(0, 1, 28)
+axes_xic[2].hist(target_scores, bins=bins_s, color="#2ECC71", alpha=0.75,
+                 label="Targets", edgecolor="white", lw=0.5)
+axes_xic[2].hist(decoy_scores,  bins=bins_s, color="#E74C3C", alpha=0.75,
+                 label="Decoys",  edgecolor="white", lw=0.5)
+thresh = np.quantile(decoy_scores, 0.95)
+axes_xic[2].axvline(thresh, color="black", lw=1.8, linestyle="--",
+                    label=f"1% FDR ({thresh:.2f})")
+axes_xic[2].set_title("Step 4–5: Score Distributions\n& FDR Threshold", fontsize=9.5)
+axes_xic[2].set_xlabel("Composite Score", fontsize=9)
+axes_xic[2].set_ylabel("Count", fontsize=9)
+axes_xic[2].legend(fontsize=8)
+axes_xic[2].spines["top"].set_visible(False)
+axes_xic[2].spines["right"].set_visible(False)
+
+fig_xic.tight_layout()
+fig_to_st(
+    fig_xic,
+    caption=(
+        "**Left:** Extracted Ion Chromatograms for five transitions of the same peptide; "
+        "all peak at the same RT (dashed line), confirming co-elution. "
+        "**Centre:** Spectral angle check; observed peak-apex intensities (red) vs library "
+        "reference (grey). Close agreement means high spectral angle score. "
+        "**Right:** Target (green) vs Decoy (red) score distributions. The dashed line "
+        "marks the score threshold corresponding to a 1% FDR."
+    ),
+)
+
+
+
+
+
