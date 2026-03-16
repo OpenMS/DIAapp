@@ -17,7 +17,7 @@ from utils.dia_tutorial import (
     apply_sgolay,
     msexperiment_to_dataframe,
 )
-from utils.dia_peak_picking import perform_xic_peak_picking
+from utils.dia_peak_picking import smooth_chromatogram, perform_xic_peak_picking
 
 page_setup()
 
@@ -51,6 +51,13 @@ if "exp_df_targeted" not in st.session_state:
 
 if "data_loaded" not in st.session_state:
     st.session_state.data_loaded = False
+
+if "sgolay_frame_length" not in st.session_state:
+    st.session_state.sgolay_frame_length = 9
+if "sgolay_polynomial_order" not in st.session_state:
+    st.session_state.sgolay_polynomial_order = 3
+if "gaussian_peak_width" not in st.session_state:
+    st.session_state.gaussian_peak_width = 50.0
 
 load_clicked = st.button(
     "Load DIA Data and perform targeted extraction", type="primary"
@@ -244,26 +251,118 @@ if (
     peak_picking_clicked = st.button(
         "Perform Peak Picking on Smoothed XICs", type="primary"
     )
+
+    picker = poms.PeakPickerChromatogram()
+    picker_params = picker.getDefaults()
+    # st.write(picker_params.to_dict())
+
+    st.markdown("#### Peak Picking Parameters")
+    smoothing_method = st.selectbox(
+        "Smoothing method",
+        options=["Savitzky-Golay", "Gaussian", "Raw"],
+        index=0,
+        key="smoothing_method",
+        help="Select the smoothing method to apply to the XICs before peak picking. 'Raw' will perform peak picking on the unsmoothed data.",
+    )
+
+    if smoothing_method == "Savitzky-Golay":
+        col1, col2 = st.columns(2)
+        with col1:
+            st.slider(
+                "Savitzky-Golay Frame Length",
+                min_value=3,
+                max_value=21,
+                step=2,
+                value=9,
+                key="sgolay_frame_length",
+                help="The window length for the Savitzky-Golay filter. Must be an odd integer.",
+            )
+        with col2:
+            st.slider(
+                "Savitzky-Golay Polynomial Order",
+                min_value=1,
+                max_value=21,
+                step=1,
+                value=3,
+                key="sgolay_polynomial_order",
+                help="The polynomial order for the Savitzky-Golay filter. Must be less than the frame length.",
+            )
+    elif smoothing_method == "Gaussian":
+        st.slider(
+            "Gaussian Peak Width (s)",
+            min_value=0.1,
+            max_value=100.0,
+            step=0.1,
+            value=50.0,
+            key="gaussian_peak_width",
+            help="The width of the Gaussian kernel for Gaussian smoothing.",
+        )
+
+    if smoothing_method in ["Savitzky-Golay", "Gaussian"]:
+        picker_params.setValue("method", "corrected")
+        if smoothing_method == "Savitzky-Golay":
+            picker_params.setValue(
+                "sgolay_frame_length", st.session_state.sgolay_frame_length
+            )
+            picker_params.setValue(
+                "sgolay_polynomial_order", st.session_state.sgolay_polynomial_order
+            )
+        elif smoothing_method == "Gaussian":
+            picker_params.setValue("use_gauss", "true")
+            picker_params.setValue("gauss_width", st.session_state.gaussian_peak_width)
+    else:
+        picker_params.setValue("method", "legacy")
+
+    picker.setParameters(picker_params)
+
     if peak_picking_clicked:
         with st.spinner("Performing peak picking and preparing plots..."):
             progress_pp = st.progress(0)
 
-            picked_peaks_df = perform_xic_peak_picking(
-                smoothed_df, intensity_col="smoothed_int"
-            )
+            try:
+                summed_xic_df = (
+                    exp_df_targeted.apply(
+                        lambda x: x.fillna(0)
+                        if x.dtype.kind in "biufc"
+                        else x.fillna(".")
+                    )
+                    .groupby(group_cols)[integrate_col]
+                    .sum()
+                    .reset_index()
+                    .groupby(["annotation", "ms_level"])[group_cols + [integrate_col]]
+                    .apply(apply_sgolay, window_length=9, polyorder=3)
+                    .reset_index(drop=True)
+                )
+                picked_peaks_df = perform_xic_peak_picking(
+                    summed_xic_df, intensity_col="intensity", picker=picker
+                )
+                st.dataframe(picked_peaks_df)
+            except Exception as e:
+                st.error(f"Error performing peak picking: {e}")
+                st.stop()
             progress_pp.progress(50)
 
+            smoothed_chromatogram_df = smooth_chromatogram(
+                summed_xic_df,
+                smoothing_method=smoothing_method,
+                sgolay_window=st.session_state.sgolay_frame_length,
+                sgolay_polyorder=st.session_state.sgolay_polynomial_order,
+                gauss_width=st.session_state.gaussian_peak_width,
+            )
+
             # per-transition subplot: one row per annotation, shared x-axis
-            annotations = list(smoothed_df["annotation"].unique())
+            annotations = list(smoothed_chromatogram_df["annotation"].unique())
             fig_sub = make_subplots(
                 rows=len(annotations), cols=1, shared_xaxes=True, vertical_spacing=0.02
             )
             for i, ann in enumerate(annotations, start=1):
-                df_sub = smoothed_df[smoothed_df["annotation"] == ann]
+                df_sub = smoothed_chromatogram_df[
+                    smoothed_chromatogram_df["annotation"] == ann
+                ]
                 fig_sub.add_trace(
                     go.Scatter(
                         x=df_sub["rt"],
-                        y=df_sub["smoothed_int"],
+                        y=df_sub["intensity"],
                         mode="lines",
                         name=str(ann),
                         showlegend=False,
@@ -274,25 +373,34 @@ if (
 
                 # add vertical lines for picked peaks
                 peaks_sub = picked_peaks_df[picked_peaks_df["annotation"] == ann]
+
+                multiple_peaks = len(peaks_sub) > 1
+                colors = ["red", "blue", "green", "orange", "purple", "brown"]
+                idx = 0
                 for _, peak in peaks_sub.iterrows():
+                    if multiple_peaks:
+                        ann_text = f"Feature {idx}"
+                    else:
+                        ann_text = f"FWHM: {peak['FWHM']:.2f}s | Int: {peak['integrated_intensity']:.0f}"
                     fig_sub.add_vline(
                         x=peak["leftWidth"],
-                        line=dict(color="red", width=1, dash="dash"),
+                        line=dict(color=colors[idx], width=1, dash="dash"),
                         row=i,
                         col=1,
-                        annotation_text=f"FWHM: {peak['FWHM']:.2f}s | Int: {peak['IntegratedIntensity']:.0f}",
+                        annotation_text=ann_text,
                         annotation_position="top left",
-                        name=str(ann) + " Peak",
+                        name=str(ann) + " Peak " + str(idx),
                     )
 
                     fig_sub.add_vline(
                         x=peak["rightWidth"],
-                        line=dict(color="red", width=1, dash="dash"),
+                        line=dict(color=colors[idx], width=1, dash="dash"),
                         row=i,
                         col=1,
                         showlegend=False,
-                        name=str(ann) + " Peak",
+                        name=str(ann) + " Peak " + str(idx),
                     )
+                    idx += 1
 
                 fig_sub.update_yaxes(title_text="Intensity", row=i, col=1)
             fig_sub.update_layout(
@@ -300,3 +408,8 @@ if (
             )
             progress_pp.progress(100)
             st.plotly_chart(fig_sub, use_container_width=True)
+
+            if smoothing_method in ["Gaussian"]:
+                st.markdown(
+                    ":blue[**Note:** The XIC rendered is the raw data, peak picking was performed using the gaussian smoothed data internally.]"
+                )
