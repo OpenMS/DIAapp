@@ -556,6 +556,95 @@ for term, definition in terms.items():
     with st.expander(f"**{term}**"):
         st.markdown(definition)
 
+# ------------------------------------
+#   DIA data structure: MS1 and MS2 peak maps
+
+st.markdown("---")
+st.subheader("The DIA Data Structure")
+
+st.markdown(
+    """
+Raw DIA data is fundamentally **multi-dimensional**:
+
+> **Retention time × MS1 precursor m/z × Isolation window × MS2 fragment m/z × Intensity**
+
+It is stored in open formats such as `.mzML` (the community standard) or
+vendor-specific formats (Thermo `.raw`, Bruker `.d`, SCIEX `.wiff`).
+The most convenient way to visualise DIA data is as a **2D peak map**
+(also called a *peak map* or *ion map*): RT on the x-axis, m/z on the
+y-axis, and intensity encoded as colour.
+"""
+)
+
+# =====================================
+#   Simulated DIA peak map
+
+from matplotlib.colors import LogNorm
+
+fig_pm, axes_pm = plt.subplots(1, 2, figsize=(12, 4.5))
+
+rng2   = np.random.default_rng(99)
+N_RT   = 200; N_MZ = 300
+RT_AX  = np.linspace(0, 60, N_RT)
+MZ_AX  = np.linspace(400, 1200, N_MZ)
+
+map_ms1 = np.random.default_rng(1).exponential(300, (N_RT, N_MZ))
+map_ms2 = np.random.default_rng(2).exponential(150, (N_RT, N_MZ))
+
+def _gauss2d(rt_c, mz_c, rt_s, mz_s, amp):
+    rt_g = np.exp(-((RT_AX - rt_c)**2) / (2 * rt_s**2))
+    mz_g = np.exp(-((MZ_AX - mz_c)**2) / (2 * mz_s**2))
+    return amp * np.outer(rt_g, mz_g)
+
+for _ in range(40):
+    rt_c = rng2.uniform(3, 57); mz_c = rng2.uniform(420, 1180)
+    amp  = 10 ** rng2.uniform(3.5, 6.0)
+    map_ms1 += _gauss2d(rt_c, mz_c, rng2.uniform(0.6, 1.5), rng2.uniform(1.5, 4.0), amp)
+
+for _ in range(180):
+    rt_c = rng2.uniform(3, 57); mz_c = rng2.uniform(100, 1100)
+    amp  = 10 ** rng2.uniform(2.5, 5.0)
+    map_ms2 += _gauss2d(rt_c, mz_c, rng2.uniform(0.5, 1.2), rng2.uniform(0.5, 2.0), amp)
+
+for ax_pm, data, title, mz_lo, mz_hi in zip(
+    axes_pm,
+    [map_ms1, map_ms2],
+    ["MS1: Precursor ions", "MS2: Fragment ions (one window)"],
+    [400, 100], [1200, 1200]
+):
+    mz_ax = np.linspace(mz_lo, mz_hi, N_MZ)
+    ax_pm.pcolormesh(RT_AX, mz_ax, data.T,
+                     norm=LogNorm(vmin=max(data.min(), 1e2), vmax=data.max()),
+                     cmap="inferno", shading="auto")
+    ax_pm.set_xlabel("Retention Time (min)", fontsize=10)
+    ax_pm.set_ylabel("m/z", fontsize=10)
+    ax_pm.set_title(title, fontsize=11, fontweight="bold")
+
+fig_pm.tight_layout()
+fig_to_st(
+    fig_pm,
+    caption=(
+        "Simulated DIA peak maps. **Left (MS1):** Each bright spot is a peptide "
+        "precursor ion. **Right (MS2):** The fragment ion map for a single isolation "
+        "window is far more complex, fragments from all co-eluting precursors overlap, "
+        "producing the dense chimeric spectra characteristic of DIA."
+    ),
+)
+
+st.markdown(
+    """
+**Reading a DIA peak map:**
+
+- A **bright spot** in the MS1 map = a peptide precursor eluting at that RT and m/z.
+- The MS2 map contains **overlapping fragment signals** from every precursor
+  inside the isolation window — it is *not* possible to directly read peptide
+  identities from the MS2 map without a targeted extraction strategy.
+- This complexity is why DIA analysis requires a **spectral library** and
+  **targeted data extraction**.
+"""
+)
+
+
 
 
 
