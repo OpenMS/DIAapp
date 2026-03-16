@@ -101,6 +101,8 @@ python-dateutil==2.9.0.post0
     #   pandas
 pytz==2025.2
     # via pandas
+redeem_properties==0.1.1
+    # via manual
 referencing==0.36.2
     # via
     #   jsonschema
