@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/OpenMS/OpenDIAKiosk/raw/main/assets/OpenDIAKiosk_logo.png" alt="OpenDIAKiosk_Logo" width="200">
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/OpenMS/OpenDIAKiosk/raw/main/assets/OpenDIAKiosk_logo.png" alt="OpenDIAKiosk_Logo" width="200">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/OpenMS/OpenDIAKiosk/raw/main/assets/OpenDIAKiosk_logo.png" alt="OpenDIAKiosk_Logo" width="500">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/OpenMS/OpenDIAKiosk/raw/main/assets/OpenDIAKiosk_logo.png" alt="OpenDIAKiosk_Logo" width="500">
     <img alt="OpenDIAKiosk_Logo" comment="Placeholder to transition between light color mode and dark color mode - this image is not directly used." src="https://github.com/OpenMS/OpenDIAKiosk/raw/main/assets/OpenDIAKiosk_logo.png">
   </picture>
 </p>
