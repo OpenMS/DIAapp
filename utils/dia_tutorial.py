@@ -5,6 +5,355 @@ import pandas as pd
 from scipy.signal import savgol_filter
 import pyopenms as poms
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import redeem_properties as rp
+
+
+B_COLOR = "#2C7FB8"
+Y_COLOR = "#D95F0E"
+NOISE_COLOR = "#AAAAAA"
+
+AA_POOL = np.array(list("ACDEFGHIKLMNPQRSTVWY"))
+
+
+def random_tryptic_peptides(
+    n: int,
+    length_range: tuple[int, int] = (8, 14),
+    rng: np.random.Generator | None = None,
+    exclude: set[str] | None = None,
+) -> list[str]:
+    if rng is None:
+        rng = np.random.default_rng(1)
+    exclude = exclude or set()
+
+    peptides = []
+    seen = set(exclude)
+
+    while len(peptides) < n:
+        length = int(rng.integers(length_range[0], length_range[1] + 1))
+        if length < 2:
+            length = 2
+
+        core = "".join(rng.choice(AA_POOL, size=length - 1))
+        cterm = rng.choice(np.array(list("KR")))
+        pep = core + cterm
+
+        if pep not in seen:
+            peptides.append(pep)
+            seen.add(pep)
+
+    return peptides
+
+
+def collapse_peaks(
+    mz: np.ndarray,
+    intensity: np.ndarray,
+    tol_da: float = 0.02,
+    mode: str = "sum",
+) -> tuple[np.ndarray, np.ndarray]:
+    if len(mz) == 0:
+        return mz, intensity
+
+    order = np.argsort(mz)
+    mz = np.asarray(mz)[order]
+    intensity = np.asarray(intensity)[order]
+
+    out_mz = []
+    out_int = []
+
+    cur_mz = [mz[0]]
+    cur_int = [intensity[0]]
+
+    for m, i in zip(mz[1:], intensity[1:]):
+        if m - cur_mz[-1] <= tol_da:
+            cur_mz.append(m)
+            cur_int.append(i)
+        else:
+            cur_mz_arr = np.asarray(cur_mz)
+            cur_int_arr = np.asarray(cur_int)
+
+            if mode == "sum":
+                out_int.append(cur_int_arr.sum())
+            elif mode == "max":
+                out_int.append(cur_int_arr.max())
+            else:
+                raise ValueError("mode must be 'sum' or 'max'")
+
+            out_mz.append(
+                np.average(cur_mz_arr, weights=np.maximum(cur_int_arr, 1e-12))
+            )
+
+            cur_mz = [m]
+            cur_int = [i]
+
+    cur_mz_arr = np.asarray(cur_mz)
+    cur_int_arr = np.asarray(cur_int)
+
+    if mode == "sum":
+        out_int.append(cur_int_arr.sum())
+    elif mode == "max":
+        out_int.append(cur_int_arr.max())
+
+    out_mz.append(np.average(cur_mz_arr, weights=np.maximum(cur_int_arr, 1e-12)))
+
+    return np.asarray(out_mz), np.asarray(out_int)
+
+
+def predict_ms2_df(
+    model,
+    peptides: list[str],
+    charge: int = 2,
+    nce: int = 20,
+    instrument: str = "QE",
+    annotate_mz: bool = True,
+) -> pd.DataFrame:
+    """
+    Predict MS2 fragments using the pretrained MS2 model.
+    """
+    try:
+        df = model.predict_df(
+            peptides,
+            charges=[charge] * len(peptides),
+            nces=[nce] * len(peptides),
+            instruments=[instrument] * len(peptides),
+            annotate_mz=annotate_mz,
+        )
+    except TypeError:
+        df = model.predict_df(
+            peptides,
+            charges=[charge] * len(peptides),
+            nces=[nce] * len(peptides),
+            instruments=[instrument] * len(peptides),
+        )
+
+    if "mz" not in df.columns:
+        raise ValueError(
+            "MS2Model.predict_df did not return an 'mz' column. "
+            "Your version may require annotate_mz=True."
+        )
+
+    return df
+
+
+def find_interfering_peptides_by_precursor_mz(
+    target_peptide: str,
+    target_charge: int,
+    isolation_half_width: float = 1.0,
+    n_interferers: int = 8,
+    batch_size: int = 256,
+    max_rounds: int = 30,
+    length_range: tuple[int, int] = (8, 14),
+    rng: np.random.Generator | None = None,
+) -> tuple[list[str], float]:
+    """
+    Generate random peptides and keep those whose precursor m/z
+    falls inside the same isolation window as the target.
+    """
+    if rng is None:
+        rng = np.random.default_rng(17)
+
+    target_mz = rp.compute_precursor_mz(target_peptide, target_charge)
+    found = []
+    seen = {target_peptide}
+
+    for _ in range(max_rounds):
+        batch = random_tryptic_peptides(
+            batch_size,
+            length_range=length_range,
+            rng=rng,
+            exclude=seen,
+        )
+
+        keep = []
+        for pep in batch:
+            mz = rp.compute_precursor_mz(pep, target_charge)
+            if abs(mz - target_mz) <= isolation_half_width:
+                keep.append(pep)
+
+        for pep in keep:
+            if pep not in seen:
+                found.append(pep)
+                seen.add(pep)
+                if len(found) >= n_interferers:
+                    return found, target_mz
+
+        seen.update(batch)
+
+    return found, target_mz
+
+
+def plot_predicted_ms2_with_interference(
+    target_peptide: str,
+    charge: int = 2,
+    nce: int = 20,
+    instrument: str = "QE",
+    isolation_half_width: float = 1.0,
+    n_interferers: int = 8,
+    frag_charge: int = 1,
+    merge_tol_da: float = 0.02,
+    interferer_scale_range: tuple[float, float] = (0.05, 0.22),
+    label_min_rel_intensity: float = 0.22,
+    length_range: tuple[int, int] = (8, 14),
+    random_seed: int = 17,
+    figsize: tuple[float, float] = (12, 4.2),
+):
+    """
+    Plot predicted MS2 spectrum for a target peptide using rp.MS2Model.
+
+    The grey background is built from predicted fragments of random peptides
+    whose precursor m/z falls in the same isolation window as the target.
+    """
+    rng = np.random.default_rng(random_seed)
+
+    model = rp.MS2Model.from_pretrained("ms2")
+
+    target_df = predict_ms2_df(
+        model,
+        peptides=[target_peptide],
+        charge=charge,
+        nce=nce,
+        instrument=instrument,
+        annotate_mz=True,
+    ).copy()
+
+    target_precursor_mz = rp.compute_precursor_mz(target_peptide, charge)
+    target_df["precursor_mz"] = target_precursor_mz
+
+    target_df = target_df[
+        (target_df["fragment_charge"] == frag_charge)
+        & (target_df["ion_type"].isin(["b", "y"]))
+    ].copy()
+
+    target_df["rel_intensity"] = target_df["intensity"] / target_df["intensity"].max()
+
+    interferer_peptides, _ = find_interfering_peptides_by_precursor_mz(
+        target_peptide=target_peptide,
+        target_charge=charge,
+        isolation_half_width=isolation_half_width,
+        n_interferers=n_interferers,
+        batch_size=256,
+        max_rounds=30,
+        length_range=length_range,
+        rng=rng,
+    )
+
+    if interferer_peptides:
+        interferer_df = predict_ms2_df(
+            model,
+            peptides=interferer_peptides,
+            charge=charge,
+            nce=nce,
+            instrument=instrument,
+            annotate_mz=True,
+        ).copy()
+
+        interferer_df["precursor_mz"] = interferer_df["peptide"].map(
+            lambda x: rp.compute_precursor_mz(x, charge)
+        )
+
+        interferer_df = interferer_df[
+            (interferer_df["fragment_charge"] == frag_charge)
+            & (interferer_df["ion_type"].isin(["b", "y"]))
+        ].copy()
+
+        scaled_parts = []
+        for pep, sub in interferer_df.groupby("peptide", sort=False):
+            sub = sub.copy()
+            scale = float(rng.uniform(*interferer_scale_range))
+            sub["plot_intensity"] = (sub["intensity"] / sub["intensity"].max()) * scale
+            scaled_parts.append(sub)
+
+        interferer_df = pd.concat(scaled_parts, ignore_index=True)
+
+        noise_mz, noise_int = collapse_peaks(
+            interferer_df["mz"].to_numpy(dtype=float),
+            interferer_df["plot_intensity"].to_numpy(dtype=float),
+            tol_da=merge_tol_da,
+            mode="sum",
+        )
+
+        if len(noise_int) > 0 and noise_int.max() > 0:
+            noise_int = noise_int / noise_int.max() * interferer_scale_range[1]
+    else:
+        interferer_df = pd.DataFrame()
+        noise_mz = np.array([])
+        noise_int = np.array([])
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    for mz, h in zip(noise_mz, noise_int):
+        ax.plot([mz, mz], [0, h], color=NOISE_COLOR, lw=1.0, zorder=1)
+
+    b_df = target_df[target_df["ion_type"] == "b"].sort_values("mz")
+    for _, row in b_df.iterrows():
+        mz = float(row["mz"])
+        h = float(row["rel_intensity"])
+        ord_ = int(row["ordinal"])
+        z = int(row["fragment_charge"])
+        ax.plot([mz, mz], [0, h], color=B_COLOR, lw=2.0, zorder=3)
+        if h >= label_min_rel_intensity:
+            ax.text(
+                mz,
+                h + 0.025,
+                f"b{ord_}{'+' * z}",
+                ha="center",
+                va="bottom",
+                fontsize=7.5,
+                color=B_COLOR,
+                fontweight="bold",
+            )
+
+    y_df = target_df[target_df["ion_type"] == "y"].sort_values("mz")
+    for _, row in y_df.iterrows():
+        mz = float(row["mz"])
+        h = float(row["rel_intensity"])
+        ord_ = int(row["ordinal"])
+        z = int(row["fragment_charge"])
+        ax.plot([mz, mz], [0, h], color=Y_COLOR, lw=2.0, zorder=3)
+        if h >= label_min_rel_intensity:
+            ax.text(
+                mz,
+                h + 0.025,
+                f"y{ord_}{'+' * z}",
+                ha="center",
+                va="bottom",
+                fontsize=7.5,
+                color=Y_COLOR,
+                fontweight="bold",
+            )
+
+    b_patch = mpatches.Patch(color=B_COLOR, label="b-ions (predicted target)")
+    y_patch = mpatches.Patch(color=Y_COLOR, label="y-ions (predicted target)")
+    n_patch = mpatches.Patch(
+        color=NOISE_COLOR,
+        label=f"Co-isolated interference ({len(interferer_peptides)} predicted peptides)",
+    )
+    ax.legend(handles=[b_patch, y_patch, n_patch], fontsize=9, loc="upper right")
+
+    ax.set_title(
+        f"Predicted MS2 spectrum — {target_peptide} (z = {charge})\n"
+        f"precursor m/z = {target_precursor_mz:.4f}",
+        fontsize=11,
+    )
+    ax.set_xlabel("m/z", fontsize=11)
+    ax.set_ylabel("Relative Intensity", fontsize=11)
+    ax.set_ylim(-0.03, 1.18)
+
+    x_min = min(
+        [target_df["mz"].min()] + ([noise_mz.min()] if len(noise_mz) else [target_df["mz"].min()])
+    )
+    x_max = max(
+        [target_df["mz"].max()] + ([noise_mz.max()] if len(noise_mz) else [target_df["mz"].max()])
+    )
+    ax.set_xlim(max(50, x_min - 40), x_max + 40)
+
+    ax.axhline(0, color="black", lw=0.8)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    fig.tight_layout()
+
+    return fig, ax, target_df, interferer_df, interferer_peptides
 
 def mz_extraction_windows(
     target_mz: float, tol_ppm: float
