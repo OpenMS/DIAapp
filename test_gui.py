@@ -24,7 +24,6 @@ def launch(request):
     (
         # "content/quickstart.py", # NOTE: this page does not work due to streamlit.errors.StreamlitPageNotFoundError error
         "content/documentation.py",
-        "content/topp_workflow_file_upload.py",
         "content/topp_workflow_parameter.py",
         "content/topp_workflow_execution.py",
         "content/topp_workflow_results.py",

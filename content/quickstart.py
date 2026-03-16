@@ -116,11 +116,7 @@ st.page_link(
     label="Check out extensive documentation on the TOPP tool framework.",
     icon="➡️",
 )
-st.page_link(
-    "content/topp_workflow_file_upload.py",
-    label="Play around with the example workflow.",
-    icon="➡️",
-)
+
 st.markdown(
     """
 ### 2. 🐍 **Flexible, custom workflow with pyOpenMS on multiple pages**
