@@ -253,7 +253,7 @@ fig_to_st(
 #   DDA vs DIA
 
 st.markdown("---")
-st.subheader("2. Data-Dependent vs Data-Independent Acquisition")
+st.subheader("Data-Dependent vs Data-Independent Acquisition")
 
 st.markdown(
     """
@@ -645,6 +645,40 @@ st.markdown(
 )
 
 
+# ------------------------------------
+#   Spectral Libraries
+
+st.markdown("---")
+st.subheader("Spectral Libraries and Transitions")
 
 
+st.markdown(
+        """
+A **spectral library** (also called an *assay library* or *transition library*)
+is the reference database that drives DIA analysis. For each peptide it stores:
+
+| Field | Description |
+|---|---|
+| `PrecursorMz` | Expected m/z of the precursor ion |
+| `PrecursorCharge` | Charge state z |
+| `NormalizedRetentionTime` | iRT value for expected RT in data |
+| `PrecursorIonMobility` | Ion mobility value (if applicable) |
+| `ProductMz` | m/z of each b/y fragment ion |
+| `ProductCharge` | Charge state of each fragment ion |
+| `RelativeFragmentIntensity` | Predicted or observed relative intensity |
+| `FragmentType` / `FragmentNumber` | Ion label (e.g. y5, b3) |
+
+Libraries are built from three sources:
+
+1. **Experimental (pseudo)-DDA libraries** — peptide identifications from DDA runs
+   on the same or similar samples, with measured fragment spectra.
+2. **In-silico predicted libraries** — predicted using deep-learning
+   fragment intensity predictors such as **Prosit** (Gessulat *et al.*, 2019),
+   **MS²PIP** (Declercq *et al.*, 2022), or **AlphaPeptDeep** (Zeng *et al.*, 2022).
+3. **Pan-Human libraries** — publically available comprehensive libraries covering the human proteome, built from large-scale DDA datasets
+
+Typically **3–6 fragment ions** (transitions) per peptide are selected for
+extraction, balancing specificity against the risk of interference.
+"""
+)
 
