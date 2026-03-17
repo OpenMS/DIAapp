@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -22,6 +23,19 @@ from utils.dia_peak_picking import (
     create_concensus_chromatogram,
     perform_xic_peak_picking,
     merge_transition_peak_boundaries_to_consensus,
+)
+from utils.dia_scoring import (
+    extract_traces_in_peak,
+    build_xcorr_matrices,
+    calc_xcorr_shape_score,
+    calc_xcorr_shape_weighted,
+    calc_xcorr_coelution_score,
+    calc_xcorr_coelution_weighted,
+    calc_nr_peaks,
+    calc_log_sn_score,
+    build_mi_matrix,
+    calc_mi_score,
+    calc_mi_weighted_score,
 )
 
 page_setup()
@@ -63,6 +77,14 @@ if "gaussian_peak_width" not in st.session_state:
     st.session_state.gaussian_peak_width = 50.0
 if "picked_peaks_df" not in st.session_state:
     st.session_state.picked_peaks_df = None
+if "consensus_df" not in st.session_state:
+    st.session_state.consensus_df = None
+if "members_df" not in st.session_state:
+    st.session_state.members_df = None
+if "smoothed_df" not in st.session_state:
+    st.session_state.smoothed_df = None
+if "scores_computed" not in st.session_state:
+    st.session_state.scores_computed = False
 
 load_clicked = st.button(
     "Load DIA Data and perform targeted extraction", type="primary"
@@ -427,7 +449,9 @@ if (
                     )
                 )
 
-                st.dataframe(consensus_df)
+                # Store in session state for scoring section
+                st.session_state.consensus_df = consensus_df
+                st.session_state.members_df = members_df
 
                 group_cols = ["ms_level", "annotation", "rt"]
                 integrate_col = "intensity"
@@ -448,31 +472,54 @@ if (
                     .reset_index(drop=True)
                 )
 
-                # Get max smoothed_int across all data
-                max_smoothed_int = smoothed_df["smoothed_int"].max()
-                consensus_df[["apexIntensity"]] = max_smoothed_int
+                # Store in session state for scoring section
+                st.session_state.smoothed_df = smoothed_df
+                st.session_state.scores_computed = (
+                    False  # reset when new data is merged
+                )
 
-                xic_plot = smoothed_df.plot(
+            # Display merged consensus results (persist even after rerun)
+            if (
+                st.session_state.consensus_df is not None
+                and not st.session_state.consensus_df.empty
+            ):
+                st.subheader("Merged Consensus Features")
+                st.dataframe(st.session_state.consensus_df)
+
+                # Get max smoothed_int across all data
+                max_smoothed_int = st.session_state.smoothed_df["smoothed_int"].max()
+                st.session_state.consensus_df[["apexIntensity"]] = max_smoothed_int
+
+                xic_plot = st.session_state.smoothed_df.plot(
                     kind="chromatogram",
                     x="rt",
                     y="smoothed_int",
                     by="annotation",
                     title=f"Smoothed Chromatogram with Consensus Features - {peptide} / {precursor_charge}+",
                     aggregate_duplicates=False,
-                    annotation_data=consensus_df,
+                    annotation_data=st.session_state.consensus_df,
                     legend_config=dict(title="Transition"),
                     # feature_config=dict(),
                     backend="ms_plotly",
                     show_plot=False,
                 )
+                st.session_state.xic_plot = xic_plot
 
-                st.plotly_chart(xic_plot, use_container_width=True)
+            # Display smoothed chromatogram with consensus (persist even after rerun)
+            if st.session_state.consensus_df is not None and hasattr(
+                st.session_state, "xic_plot"
+            ):
+                st.plotly_chart(st.session_state.xic_plot, use_container_width=True)
 
                 st.markdown("""
                 In the plot above, we show the smoothed XICs for each transition with the consensus peak boundaries plotted as vertical solid lines. 
                 
                 But why go through all the trouble of doing individual transition-level peak picking and then merging into consensus features? Why not just perform peak picking on the summed XICs across all transitions for a precursor? Let's try that next.
                 """)
+
+            if merge_clicked and st.session_state.consensus_df is not None:
+                # Only compute these comparison plots when merge is clicked (expensive computation)
+                exp_df_targeted = st.session_state.exp_df_targeted
 
                 # =========================================
                 #   Raw concensus with raw peak picking
@@ -806,8 +853,380 @@ if (
                     height=900,
                     title_text="Comparison of Concensus Chromatograms and Individual Transition XICs",
                 )
-                st.plotly_chart(combined_concensus_plot, use_container_width=True)
+                # Store for persistent display
+                st.session_state.combined_concensus_plot = combined_concensus_plot
+
+            # Display combined consensus plot (persist even after rerun)
+            if hasattr(st.session_state, "combined_concensus_plot"):
+                st.plotly_chart(
+                    st.session_state.combined_concensus_plot, use_container_width=True
+                )
 
                 st.markdown("""
-                From the plots above, we can see that performing peak picking on the summed XICs across all transitions (concensus chromatogram) can yield different peak boundaries compared to performing peak picking on the individual transitions and then merging into consensus features. This is because the peak picking algorithm may identify different peaks and boundaries when applied to the summed signal compared to the individual signals, especially if there is variability in the peak shapes and retention times across transitions. Additionally, the choice of smoothing method and parameters can also impact the detected peaks and their boundaries. It's important to carefully consider these factors when designing a DIA data processing pipeline and to validate the results using appropriate metrics and visualizations.
+            From the plots above, we can see that performing peak picking on the summed XICs across all transitions (concensus chromatogram) can yield reasonable peak boundaries when performing peak picking with internal smoothing. The raw concensus chromatogram with raw peak picking results in half of the peak being picked, which would result in inaccurate quantification. The raw concensus chromatogram and smooth concensus chromatogram with smoothed peak picking both yield pretty much the same peak boundaries. In this example we used just plain summation to generate the concensus chromatogram, but there are potentially other better methods for generating the concensus chromatogram that could further improve the peak picking results, such as median, weighting the transitions differently based on their intensity or other characteristics. Lastly, even though peak picking on the concensus chromatogram can yield reasonable results in this example, this may not be the case for 1000s of peptide-precursor extracted ion chromatograms. Large scale benchmarking experiments would need to be performed to compare the overall performance.
                 """)
+
+st.markdown("---")
+st.subheader("Extracted Ion Chromatogram Peak-Group Scoring")
+
+
+# Check if we have the necessary data to compute scores
+if (
+    st.session_state.consensus_df is not None
+    and not st.session_state.consensus_df.empty
+    and st.session_state.smoothed_df is not None
+    and not st.session_state.smoothed_df.empty
+):
+    st.markdown("""
+    Once consensus features have been identified through peak boundary merging, 
+    we can compute chromatographic quality scores to assess the reliability of each feature.
+    """)
+
+    compute_clicked = st.button(
+        "Compute Peak-Group Chromatographic Scores",
+        type="primary",
+    )
+
+    if compute_clicked or st.session_state.scores_computed:
+        with st.spinner("Computing chromatographic scores..."):
+            try:
+                consensus_df = st.session_state.consensus_df
+                members_df = (
+                    st.session_state.members_df
+                    if st.session_state.members_df is not None
+                    else pd.DataFrame()
+                )
+                smoothed_df = st.session_state.smoothed_df
+
+                score_rows = []
+                score_details = {}  # store matrices and traces for visualization
+
+                for _, crow in consensus_df.iterrows():
+                    cid = crow.get("consensus_feature_id", None)
+                    # members for this consensus
+                    if not members_df.empty:
+                        memb = members_df[members_df["consensus_feature_id"] == cid]
+                    else:
+                        memb = pd.DataFrame()
+
+                    if not memb.empty:
+                        annotations_for_group = list(memb["annotation"].unique())
+                    elif "annotations" in crow:
+                        annotations_for_group = [
+                            a for a in str(crow.get("annotations", "")).split(",") if a
+                        ]
+                    else:
+                        annotations_for_group = list(smoothed_df["annotation"].unique())
+
+                    # extract smoothed traces for this consensus window
+                    try:
+                        rt_grid, traces = extract_traces_in_peak(
+                            smoothed_df,
+                            crow,
+                            annotation_col="annotation",
+                            rt_col="rt",
+                            intensity_col="smoothed_int",
+                            annotations=annotations_for_group,
+                            n_points=101,
+                        )
+                    except Exception:
+                        # fallback to full set
+                        rt_grid, traces = extract_traces_in_peak(
+                            smoothed_df, crow, intensity_col="smoothed_int"
+                        )
+
+                    if len(traces) == 0:
+                        continue
+
+                    corr_max, lag_at_max, anns = build_xcorr_matrices(traces)
+                    lib_intens = np.array(
+                        [
+                            float(
+                                smoothed_df[smoothed_df["annotation"] == a][
+                                    "smoothed_int"
+                                ].max()
+                            )
+                            if not smoothed_df[smoothed_df["annotation"] == a].empty
+                            else 0.0
+                            for a in anns
+                        ]
+                    )
+
+                    xcorr_shape = calc_xcorr_shape_score(corr_max)
+                    xcorr_coelution = calc_xcorr_coelution_score(lag_at_max)
+                    sn_score = calc_log_sn_score(traces)
+
+                    mi_mat, _ = build_mi_matrix(traces)
+                    mi_score = calc_mi_score(mi_mat)
+
+                    row_scores = dict(
+                        consensus_feature_id=cid,
+                        apex_rt=float(crow.get("apex_rt", np.nan)),
+                        leftWidth=float(crow.get("leftWidth", np.nan)),
+                        rightWidth=float(crow.get("rightWidth", np.nan)),
+                        n_members=int(crow.get("n_members", 0)),
+                        n_annotations=int(crow.get("n_annotations", 0)),
+                        VAR_XCORR_SHAPE=xcorr_shape,
+                        VAR_XCORR_SHAPE_WEIGHTED=calc_xcorr_shape_weighted(
+                            corr_max, lib_intens
+                        ),
+                        VAR_XCORR_COELUTION=xcorr_coelution,
+                        VAR_XCORR_COELUTION_WEIGHTED=calc_xcorr_coelution_weighted(
+                            lag_at_max, lib_intens
+                        ),
+                        NR_PEAKS=int(memb.shape[0]) if not memb.empty else 0,
+                        VAR_LOG_SN_SCORE=sn_score,
+                        VAR_MI_SCORE=mi_score,
+                        VAR_MI_WEIGHTED_SCORE=calc_mi_weighted_score(
+                            mi_mat, lib_intens
+                        ),
+                    )
+
+                    score_rows.append(row_scores)
+
+                    # Store details for visualization
+                    score_details[cid] = {
+                        "corr_max": corr_max,
+                        "lag_at_max": lag_at_max,
+                        "mi_mat": mi_mat,
+                        "anns": anns,
+                        "traces": traces,
+                        "row_scores": row_scores,
+                    }
+
+                if score_rows:
+                    scores_df = pd.DataFrame(score_rows)
+
+                    st.subheader("Chromatographic Scores per Consensus Feature")
+                    st.markdown("""
+                    **Score Definitions:**
+                    - **VAR_XCORR_SHAPE**: Cross-correlation shape score (mean of max correlations between transitions). Higher = better coelution.
+                    - **VAR_XCORR_COELUTION**: Coelution score (mean lag + std of lags). Lower = better coelution.
+                    - **VAR_LOG_SN_SCORE**: Log signal-to-noise ratio (mean of S/N per transition). Higher = better.
+                    - **VAR_MI_SCORE**: Mutual information score (mean of MI matrix). Higher = more dependent transitions.
+                    - **NR_PEAKS**: Number of member peaks in the consensus feature.
+                    """)
+
+                    # Display as compact score cards
+                    st.markdown("#### Score Summary per Consensus Feature")
+                    for idx, (cid, scores) in enumerate(score_details.items()):
+                        with st.expander(
+                            f"🔍 {cid} (RT: {scores['row_scores']['apex_rt']:.2f}s)"
+                        ):
+                            # Metric cards in columns
+                            col1, col2, col3, col4 = st.columns(4)
+                            with col1:
+                                st.metric(
+                                    "Shape Score",
+                                    f"{scores['row_scores']['VAR_XCORR_SHAPE']:.4f}",
+                                    help="Cross-correlation shape (higher is better)",
+                                )
+                            with col2:
+                                st.metric(
+                                    "Coelution",
+                                    f"{scores['row_scores']['VAR_XCORR_COELUTION']:.4f}",
+                                    help="Coelution score (lower is better)",
+                                )
+                            with col3:
+                                st.metric(
+                                    "Log S/N",
+                                    f"{scores['row_scores']['VAR_LOG_SN_SCORE']:.4f}",
+                                    help="Log signal-to-noise (higher is better)",
+                                )
+                            with col4:
+                                st.metric(
+                                    "MI Score",
+                                    f"{scores['row_scores']['VAR_MI_SCORE']:.4f}",
+                                    help="Mutual information (higher = more dependent)",
+                                )
+
+                            # Quality summary interpretation
+                            st.divider()
+                            shape_score = scores["row_scores"]["VAR_XCORR_SHAPE"]
+                            coelution_score = scores["row_scores"][
+                                "VAR_XCORR_COELUTION"
+                            ]
+                            sn_score = scores["row_scores"]["VAR_LOG_SN_SCORE"]
+                            mi_score = scores["row_scores"]["VAR_MI_SCORE"]
+
+                            shape_status = (
+                                "✓ Excellent"
+                                if shape_score > 95
+                                else ("⚠ Good" if shape_score > 85 else "✗ Fair")
+                            )
+                            coelution_status = (
+                                "✓ Excellent"
+                                if coelution_score < 1.0
+                                else ("⚠ Good" if coelution_score < 2.0 else "✗ Fair")
+                            )
+                            sn_status = (
+                                "✓ Excellent"
+                                if sn_score > 2.0
+                                else ("⚠ Good" if sn_score > 1.0 else "✗ Fair")
+                            )
+
+                            col_interp1, col_interp2, col_interp3 = st.columns(3)
+                            with col_interp1:
+                                st.caption(
+                                    f"**Shape**: {shape_status} ({shape_score:.2f})"
+                                )
+                            with col_interp2:
+                                st.caption(
+                                    f"**Coelution**: {coelution_status} ({coelution_score:.2f})"
+                                )
+                            with col_interp3:
+                                st.caption(f"**S/N**: {sn_status} ({sn_score:.2f})")
+
+                            # Cross-correlation heatmap with text annotations and zoomed colorscale
+                            st.write("**Cross-Correlation Matrix (Shape):**")
+                            corr_max_arr = scores["corr_max"]
+                            # Create text annotations
+                            text_annotations = [
+                                [f"{val:.2f}" for val in row] for row in corr_max_arr
+                            ]
+                            fig_xcorr = go.Figure(
+                                data=go.Heatmap(
+                                    z=corr_max_arr,
+                                    x=scores["anns"],
+                                    y=scores["anns"],
+                                    text=text_annotations,
+                                    texttemplate="%{text}",
+                                    textfont={"size": 10},
+                                    colorscale="Blues",
+                                    zmin=np.percentile(
+                                        corr_max_arr, 5
+                                    ),  # Zoom to actual data range
+                                    zmax=100,
+                                    hovertemplate="<b>%{x} vs %{y}</b><br>Correlation: %{z:.2f}<extra></extra>",
+                                )
+                            )
+                            fig_xcorr.update_layout(
+                                height=400,
+                                title="Pairwise Cross-Correlation (max values, higher = better coelution)",
+                            )
+                            st.plotly_chart(fig_xcorr, use_container_width=True)
+
+                            # Lag-at-maximum heatmap (shows coelution visually)
+                            st.write("**Coelution (Lag-at-Maximum):**")
+                            lag_arr = np.abs(scores["lag_at_max"])  # Use absolute lags
+                            text_lag = [
+                                [f"{val:.1f}" for val in row] for row in lag_arr
+                            ]
+                            fig_lag = go.Figure(
+                                data=go.Heatmap(
+                                    z=lag_arr,
+                                    x=scores["anns"],
+                                    y=scores["anns"],
+                                    text=text_lag,
+                                    texttemplate="%{text}",
+                                    textfont={"size": 10},
+                                    colorscale="Reds",
+                                    hovertemplate="<b>%{x} vs %{y}</b><br>Abs Lag: %{z:.1f} points<extra></extra>",
+                                )
+                            )
+                            fig_lag.update_layout(
+                                height=400,
+                                title="Absolute Lag at Maximum (lower = better coelution)",
+                            )
+                            st.plotly_chart(fig_lag, use_container_width=True)
+
+                            # Per-transition S/N bar chart
+                            st.write("**Per-Transition Signal-to-Noise Scores:**")
+                            sn_per_transition = []
+                            trace_names = []
+                            for ann, trace in scores["traces"].items():
+                                # S/N = peak intensity / baseline noise (90th percentile as baseline)
+                                peak_intensity = np.max(trace)
+                                baseline = np.percentile(trace, 90)
+                                sn_val = (
+                                    np.log10(peak_intensity / (baseline + 1e-12))
+                                    if baseline > 0
+                                    else 0
+                                )
+                                sn_per_transition.append(sn_val)
+                                trace_names.append(str(ann))
+
+                            fig_sn = go.Figure(
+                                data=go.Bar(
+                                    x=trace_names,
+                                    y=sn_per_transition,
+                                    text=[f"{val:.2f}" for val in sn_per_transition],
+                                    textposition="auto",
+                                    marker=dict(
+                                        color=sn_per_transition,
+                                        colorscale="Greens",
+                                        showscale=False,
+                                        line=dict(color="darkgreen", width=1),
+                                    ),
+                                    hovertemplate="<b>%{x}</b><br>Log S/N: %{y:.2f}<extra></extra>",
+                                )
+                            )
+                            fig_sn.update_layout(
+                                height=300,
+                                title="Signal-to-Noise per Transition (log scale, >1.0 = good)",
+                                xaxis_title="Transition",
+                                yaxis_title="Log(S/N)",
+                                showlegend=False,
+                            )
+                            st.plotly_chart(fig_sn, use_container_width=True)
+
+                            # Heatmap of MI matrix
+                            st.write("**Mutual Information Matrix:**")
+                            fig_mi = go.Figure(
+                                data=go.Heatmap(
+                                    z=scores["mi_mat"],
+                                    x=scores["anns"],
+                                    y=scores["anns"],
+                                    text=[
+                                        [f"{val:.3f}" for val in row]
+                                        for row in scores["mi_mat"]
+                                    ],
+                                    texttemplate="%{text}",
+                                    textfont={"size": 9},
+                                    colorscale="Viridis",
+                                    hovertemplate="<b>%{x} vs %{y}</b><br>MI: %{z:.3f}<extra></extra>",
+                                )
+                            )
+                            fig_mi.update_layout(
+                                height=400,
+                                title="Pairwise Mutual Information (higher = more information dependency)",
+                            )
+                            st.plotly_chart(fig_mi, use_container_width=True)
+
+                            # Traces visualization
+                            st.write("**Standardized Traces in Peak Window:**")
+                            fig_traces = go.Figure()
+                            for ann, trace in scores["traces"].items():
+                                # standardize for display
+                                trace_std = (trace - np.mean(trace)) / (
+                                    np.std(trace) + 1e-12
+                                )
+                                fig_traces.add_trace(
+                                    go.Scatter(
+                                        y=trace_std,
+                                        mode="lines",
+                                        name=str(ann),
+                                        opacity=0.8,
+                                    )
+                                )
+                            fig_traces.update_layout(
+                                height=300,
+                                title="Standardized Transition Traces (z-scored for visualization)",
+                                xaxis_title="Sample Point",
+                                yaxis_title="Standardized Intensity",
+                            )
+                            st.plotly_chart(fig_traces, use_container_width=True)
+
+                    # Summary table
+                    st.markdown("#### Detailed Score Table")
+                    st.dataframe(scores_df)
+
+                    st.session_state.scores_computed = True
+                else:
+                    st.info("No consensus features found to score.")
+
+            except Exception as e:
+                import traceback
+
+                st.error(f"Error computing chromatographic scores: {e}")
+                st.write(traceback.format_exc())
