@@ -24,9 +24,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      showgrid="false"
-     inkscape:zoom="4.8410257"
-     inkscape:cx="79.735169"
-     inkscape:cy="74.984109"
+     inkscape:zoom="1.7115611"
+     inkscape:cx="-91.729126"
+     inkscape:cy="-98.156008"
      inkscape:window-width="2544"
      inkscape:window-height="1327"
      inkscape:window-x="20"
@@ -294,27 +294,6 @@
        sodipodi:nodetypes="cccccc" />
   </g>
   <!-- Cycle 4 partial overflow: x 164, 175, 186 -->
-  <g
-     opacity="0.55"
-     id="g151"
-     transform="translate(-16,-15)">
-    <line
-       x1="186"
-       y1="138"
-       x2="186"
-       y2="124"
-       stroke="#ffffff"
-       stroke-width="1.2"
-       id="line145" />
-    <polygon
-       points="189,138 186,144 183,138 "
-       fill="#ffffff"
-       id="polygon147" />
-    <polygon
-       points="189,124 186,118 183,124 "
-       fill="#ffffff"
-       id="polygon149" />
-  </g>
   <text
      y="73"
      dominant-baseline="central"
