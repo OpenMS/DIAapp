@@ -174,8 +174,9 @@ SCORE_CATS = [
     ),
     ("Ion Mobility", "#9B59B6", "Ion mobility drift time\ncorrelation and deviation"),
     ("UIS", "#D95A4A", "Unique ion signature\n(PTM identification)"),
-    ("Intensity", "#16A085", "Peak group intensity\nvs total XIC"),
-    ("Elution\nModel", "#7F8C8D", "EMG peak shape\nfit quality"),
+    # Not really used as much currently
+    # ("Intensity", "#16A085", "Peak group intensity\nvs total XIC"),
+    # ("Elution\nModel", "#7F8C8D", "EMG peak shape\nfit quality"),
 ]
 
 fig_ov, ax_ov = plt.subplots(figsize=(14, 2.8))
