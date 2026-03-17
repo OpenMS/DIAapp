@@ -59,6 +59,7 @@ def create_concensus_chromatogram(xic_df: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: A DataFrame containing the consensus chromatogram with columns 'rt' and 'intensity'.
     """
     consensus_df = xic_df.groupby("rt")["intensity"].sum().reset_index(name="intensity")
+    consensus_df["annotation"] = "consensus"
     return consensus_df
 
 
