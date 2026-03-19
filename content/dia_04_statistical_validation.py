@@ -1028,6 +1028,211 @@ permutation importance are **magnitude-only** measures.
     )
 
 
+@st.fragment
+def _render_comparison(scatter_cache: dict, all_scores: dict) -> None:
+    """Fragment: only this section rerenders when the dropdown changes."""
+    if not scatter_cache:
+        st.info("No models to compare (LDA may be the only model trained).")
+        return
+
+    others = list(scatter_cache.keys())
+    sel = st.selectbox(
+        "Compare LDA against:",
+        options=others,
+        key="model_cmp_sel",
+    )
+
+    cache = scatter_cache[sel]
+    md = cache["marg_data"]
+    thr_lda = cache["thr_lda"]
+    thr_sel = cache["thr_other"]
+    n_lda = cache["n_lda"]
+    n_sel = cache["n_other"]
+
+    st.markdown(
+        f"Scatter: **LDA d-score** (x) vs **{sel} d-score** (y). "
+        "Dashed lines = 1% FDR thresholds. Marginal histograms show score distributions for targets and decoys."
+    )
+
+    fig5 = make_subplots(
+        rows=2,
+        cols=2,
+        column_widths=[0.78, 0.22],
+        row_heights=[0.22, 0.78],
+        shared_xaxes=True,
+        shared_yaxes=True,
+    )
+
+    for label, col in [("Target", TARGET_COLOR), ("Decoy", DECOY_COLOR)]:
+        d = md[label]
+        fig5.add_trace(
+            go.Scattergl(
+                x=d["x"],
+                y=d["y"],
+                mode="markers",
+                marker=dict(color=col, size=2, opacity=0.20),
+                name=label,
+                legendgroup=label,
+                showlegend=True,
+            ),
+            row=2,
+            col=1,
+        )
+        fig5.add_trace(
+            go.Bar(
+                x=d["ex"],
+                y=d["hx"],
+                name=label,
+                marker_color=col,
+                opacity=0.65,
+                legendgroup=label,
+                showlegend=False,
+            ),
+            row=1,
+            col=1,
+        )
+        fig5.add_trace(
+            go.Bar(
+                x=d["hy"],
+                y=d["ey"],
+                orientation="h",
+                name=label,
+                marker_color=col,
+                opacity=0.65,
+                legendgroup=label,
+                showlegend=False,
+            ),
+            row=2,
+            col=2,
+        )
+
+    fig5.add_vline(
+        x=thr_lda,
+        line_dash="dash",
+        line_color=MODEL_COLORS["LDA"],
+        line_width=2,
+        row=2,
+        col=1,
+    )
+    fig5.add_vline(
+        x=thr_lda,
+        line_dash="dash",
+        line_color=MODEL_COLORS["LDA"],
+        line_width=2,
+        row=1,
+        col=1,
+    )
+    fig5.add_hline(
+        y=thr_sel,
+        line_dash="dash",
+        line_color=MODEL_COLORS.get(sel, "#888888"),
+        line_width=2,
+        row=2,
+        col=1,
+    )
+    fig5.add_hline(
+        y=thr_sel,
+        line_dash="dash",
+        line_color=MODEL_COLORS.get(sel, "#888888"),
+        line_width=2,
+        row=2,
+        col=2,
+    )
+
+    fig5.update_xaxes(title_text="LDA d-score", row=2, col=1)
+    fig5.update_yaxes(title_text=f"{sel} d-score", row=2, col=1)
+    fig5.update_layout(
+        height=640,
+        barmode="overlay",
+        title_text=f"LDA ({n_lda:,} IDs) vs {sel} ({n_sel:,} IDs) @ 1% FDR",
+        legend=dict(title="Label", orientation="h", y=1.03),
+    )
+    st.plotly_chart(fig5, use_container_width=True)
+
+    r, p_corr = scipy.stats.pearsonr(all_scores["LDA"], all_scores[sel])
+    st.metric(f"Pearson r (LDA vs {sel})", f"{r:.4f}", help=f"p = {p_corr:.2e}")
+
+
+@st.fragment
+def render_stage_5() -> None:
+    """Render Stage 5 inside a fragment; the nested comparison fragment handles the dropdown."""
+    if not st.session_state.s4_done:
+        return
+
+    st.markdown("---")
+    st.subheader("Model Comparison — LDA Baseline vs Others")
+
+    s5_btn = st.button(
+        "▶ Pre-compute Comparison Data",
+        type="primary",
+        disabled=st.session_state.s5_done,
+        key="s5_precompute_btn",
+    )
+
+    if s5_btn and not st.session_state.s5_done:
+        feat_df = st.session_state.feat_df
+        all_scores = st.session_state.all_scores
+
+        if "LDA" not in all_scores:
+            st.warning("LDA scores required for comparison — run Stage 2 first.")
+            return
+
+        is_decoy = feat_df["decoy"].to_numpy()
+        lda_sc = all_scores["LDA"]
+        scatter_cache = {}
+        progress = st.progress(0)
+        others = [nm for nm in all_scores if nm != "LDA"]
+        try:
+            res_lda = compute_full_stats(lda_sc, feat_df)
+            thr_lda = res_lda["threshold"]
+            n_lda = res_lda["n_ids_1pct"]
+        except Exception:
+            thr_lda, n_lda = float(lda_sc.max()), 0
+
+        for k, nm in enumerate(others):
+            sc2 = all_scores[nm]
+            try:
+                res2 = compute_full_stats(sc2, feat_df)
+                thr2 = res2["threshold"]
+                n2 = res2["n_ids_1pct"]
+            except Exception:
+                thr2, n2 = float(sc2.max()), 0
+
+            t_mask = is_decoy == 0
+            d_mask = is_decoy == 1
+            marg_data = {}
+            for mask, label in [(t_mask, "Target"), (d_mask, "Decoy")]:
+                x_vals = lda_sc[mask]
+                y_vals = sc2[mask]
+                h_x, e_x = np.histogram(x_vals, bins=60, density=True)
+                h_y, e_y = np.histogram(y_vals, bins=60, density=True)
+                marg_data[label] = {
+                    "x": x_vals.tolist(),
+                    "y": y_vals.tolist(),
+                    "hx": h_x.tolist(),
+                    "ex": ((e_x[:-1] + e_x[1:]) / 2).tolist(),
+                    "hy": h_y.tolist(),
+                    "ey": ((e_y[:-1] + e_y[1:]) / 2).tolist(),
+                }
+            scatter_cache[nm] = {
+                "marg_data": marg_data,
+                "thr_lda": thr_lda,
+                "thr_other": thr2,
+                "n_lda": n_lda,
+                "n_other": n2,
+            }
+            progress.progress(int(100 * (k + 1) / len(others)))
+
+        st.session_state.scatter_cache = scatter_cache
+        st.session_state.s5_done = True
+        st.rerun()
+
+    if not st.session_state.s5_done:
+        return
+
+    _render_comparison(st.session_state.scatter_cache, st.session_state.all_scores)
+
+
 # -----------------------------------------------------------------------------
 # Page content
 
@@ -1054,6 +1259,8 @@ render_stage_2()
 render_stage_3()
 
 render_stage_4()
+
+render_stage_5()
 
 # -----------------------------------------------------------------------------
 # References
