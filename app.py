@@ -81,6 +81,13 @@ if __name__ == "__main__":
                 icon="💥",
             ),
         ],
+        "Others": [
+            st.Page(
+                Path("content", "log_viewer.py"),
+                title="Log Viewer",
+                icon="🧾",
+            ),
+        ],
     }
 
     pg = st.navigation(pages)
