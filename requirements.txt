@@ -26,10 +26,6 @@ contourpy==1.3.1
     # via matplotlib
 cycler==0.12.1
     # via matplotlib
-easypqp==0.1.58
-    # via manual
-easypqp_rs==0.1.7
-    # via manual
 fonttools==4.59.2
     # via matplotlib
 gitdb==4.0.12
@@ -101,8 +97,6 @@ python-dateutil==2.9.0.post0
     #   pandas
 pytz==2025.2
     # via pandas
-redeem_properties==0.1.1
-    # via manual
 referencing==0.36.2
     # via
     #   jsonschema
@@ -147,3 +141,11 @@ xlsxwriter
 # Redis Queue dependencies (for online mode)
 redis>=5.0.0
 rq>=1.16.0
+
+# DIA stuff
+easypqp==0.1.58
+easypqp_rs==0.1.7
+redeem_properties==0.1.1
+scipy==1.17.1
+scikit-learn==1.8.0
+xgboost-cpu==3.2.0
