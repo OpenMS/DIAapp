@@ -625,7 +625,7 @@ def render_stage_2() -> None:
     st.markdown(
         f"""
 Each model is trained using the **iterative semi-supervised** approach
-(matching PyProphet's `StandardSemiSupervisedLearner`):
+(similar to PyProphet's `StandardSemiSupervisedLearner`, except for these examples we just perform a simple semi-supervervised loop without additional internal cross-validation.):
 
 | Parameter | Value |
 |---|---|
@@ -695,6 +695,10 @@ Each model is trained using the **iterative semi-supervised** approach
 
     st.markdown("#### Summary — semi-supervised model performance")
     st.dataframe(pd.DataFrame(rows).set_index("Model"), use_container_width=True)
+
+    st.markdown("""
+                All models improve target-decoy separation to a similar moderate level, but the nonlinear models perform best overall, with XGBoost and Multi-Layer Perceptron (MLP) neural network giving the highest top-1 ROC-AUC and the most identifications at 1% FDR. In this dataset, MLP yields the most IDs, while XGBoost is very close and slightly better by ROC-AUC, suggesting both capture feature interactions that LDA and SVM miss.
+                """)
 
     with st.expander("Semi-supervised loop pseudocode"):
         st.code(
