@@ -1021,6 +1021,12 @@ permutation importance are **magnitude-only** measures.
         )
         st.plotly_chart(fig_imp, use_container_width=True)
 
+    st.markdown(
+        """
+        Across models, a small set of chromatography and library-matching features consistently drive discrimination, especially **var_xcorr_shape_weighted**, **var_dotprod_score**, and **var_intensity_score**, **var_mi_score**, suggesting these contain most of the target-versus-decoy signal. The exact rankings differ by model because each learner captures the feature relationships differently, but the overall pattern is consistent: weighted shape/coelution, spectral similarity, intensity, and RT-related features are the most informative, while a few negatively weighted features in LDA/SVM likely act as evidence against true targets rather than in favor of them.
+        """
+    )
+
 
 # -----------------------------------------------------------------------------
 # Page content
