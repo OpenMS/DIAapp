@@ -9,6 +9,26 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import redeem_properties as rp
 
+# Compatibility shim: older pyopenms releases (e.g. 3.5.0) expose
+# `get_df` instead of `to_df`. Ensure `MSExperiment.to_df` exists
+# by forwarding to `get_df` when appropriate.
+try:
+    if not hasattr(poms.MSExperiment, "to_df") and hasattr(poms.MSExperiment, "get_df"):
+
+        def _msexperiment_to_df(self, *args, **kwargs):
+            # Prefer passing through arguments; fall back to calling
+            # get_df without kwargs if the signature differs.
+            try:
+                return self.get_df(*args, **kwargs)
+            except TypeError:
+                return self.get_df()
+
+        poms.MSExperiment.to_df = _msexperiment_to_df
+except Exception:
+    # If anything unexpected happens while patching, do not crash import;
+    # callers will either have `to_df` or will handle the missing method.
+    pass
+
 
 B_COLOR = "#2C7FB8"
 Y_COLOR = "#D95F0E"
@@ -341,10 +361,12 @@ def plot_predicted_ms2_with_interference(
     ax.set_ylim(-0.03, 1.18)
 
     x_min = min(
-        [target_df["mz"].min()] + ([noise_mz.min()] if len(noise_mz) else [target_df["mz"].min()])
+        [target_df["mz"].min()]
+        + ([noise_mz.min()] if len(noise_mz) else [target_df["mz"].min()])
     )
     x_max = max(
-        [target_df["mz"].max()] + ([noise_mz.max()] if len(noise_mz) else [target_df["mz"].max()])
+        [target_df["mz"].max()]
+        + ([noise_mz.max()] if len(noise_mz) else [target_df["mz"].max()])
     )
     ax.set_xlim(max(50, x_min - 40), x_max + 40)
 
@@ -355,9 +377,8 @@ def plot_predicted_ms2_with_interference(
 
     return fig, ax, target_df, interferer_df, interferer_peptides
 
-def mz_extraction_windows(
-    target_mz: float, tol_ppm: float
-):
+
+def mz_extraction_windows(target_mz: float, tol_ppm: float):
     """Calculate m/z extraction window bounds in Dalton given target m/z and ppm tolerance."""
     # tol_ppm is parts-per-million; convert to Dalton: mz * (ppm / 1e6)
     tol_da = target_mz * tol_ppm / 1e6
@@ -365,21 +386,20 @@ def mz_extraction_windows(
     upper_bound = target_mz + tol_da
     return lower_bound, upper_bound
 
-def rt_extraction_windows(
-    target_rt: float, tol_seconds: float
-):
+
+def rt_extraction_windows(target_rt: float, tol_seconds: float):
     """Calculate RT extraction window bounds in seconds given target RT and tolerance."""
     lower_bound = target_rt - tol_seconds / 2.0
     upper_bound = target_rt + tol_seconds / 2.0
     return lower_bound, upper_bound
 
-def im_extraction_windows(
-    target_im: float, tol: float
-):
+
+def im_extraction_windows(target_im: float, tol: float):
     """Calculate ion mobility extraction window bounds given target IM and tolerance."""
     lower_bound = target_im - tol / 2.0
     upper_bound = target_im + tol / 2.0
     return lower_bound, upper_bound
+
 
 def filter_spectrum(
     spectrum: poms.MSSpectrum,
@@ -393,7 +413,9 @@ def filter_spectrum(
     """Filter a spectrum for peaks around target precursor/product masses."""
     # Calculate m/z extraction windows
     prec_mz_low, prec_mz_high = mz_extraction_windows(target_precursor_mz, prec_mz_tol)
-    prod_mz_windows = [mz_extraction_windows(mz, prod_mz_tol) for mz in target_product_mzs]
+    prod_mz_windows = [
+        mz_extraction_windows(mz, prod_mz_tol) for mz in target_product_mzs
+    ]
 
     # Calculate ion mobility extraction window if provided
     if target_im is not None and im_tol is not None:
@@ -453,10 +475,16 @@ def filter_spectrum(
         if not precs:
             return poms.MSSpectrum()
         current_prec = precs[0]
-        swath_lower = current_prec.getMZ() - current_prec.getIsolationWindowLowerOffset()
-        swath_upper = current_prec.getMZ() + current_prec.getIsolationWindowUpperOffset()
+        swath_lower = (
+            current_prec.getMZ() - current_prec.getIsolationWindowLowerOffset()
+        )
+        swath_upper = (
+            current_prec.getMZ() + current_prec.getIsolationWindowUpperOffset()
+        )
 
-        if not (target_precursor_mz >= swath_lower and target_precursor_mz <= swath_upper):
+        if not (
+            target_precursor_mz >= swath_lower and target_precursor_mz <= swath_upper
+        ):
             return poms.MSSpectrum()
 
         # build product mask by OR-ing all product windows
@@ -489,6 +517,7 @@ def filter_spectrum(
 
         return spec_out
 
+
 def reduce_spectra(
     exp: poms.MSExperiment,
     target_precursor_mz: float,
@@ -520,6 +549,7 @@ def reduce_spectra(
             filtered_exp.addSpectrum(filtered_spectrum)
     return filtered_exp
 
+
 def annotate_filtered_spectra(
     filtered_df: pd.DataFrame,
     precursor_mz: float,
@@ -532,7 +562,7 @@ def annotate_filtered_spectra(
 ) -> pd.DataFrame:
     """Annotate filtered spectra with precursor/fragment assignment and mass error."""
     out = filtered_df.copy()
-    
+
     # Ensure an `ion_mobility` column exists in the output when the input
     # DataFrame contains it (or add a numeric column if missing). This makes
     # downstream code that expects an `ion_mobility` column robust.
@@ -609,6 +639,7 @@ def apply_sgolay(
     )
     return group
 
+
 def msexperiment_to_dataframe(
     exp: poms.MSExperiment,
 ) -> pd.DataFrame:
@@ -622,7 +653,9 @@ def msexperiment_to_dataframe(
         try:
             int_array = spectrum.get_intensity_array()
         except Exception:
-            int_array = np.array([spectrum.getIntensity(i) for i in range(spectrum.size())])
+            int_array = np.array(
+                [spectrum.getIntensity(i) for i in range(spectrum.size())]
+            )
 
         im_array = None
         try:
@@ -647,7 +680,6 @@ def msexperiment_to_dataframe(
 
     df = pd.DataFrame(rows)
     return df
-
 
 
 def bin_3d_trace_df(
@@ -689,13 +721,16 @@ def bin_3d_trace_df(
 
     ix, iy, iz = np.where(counts > 0)
 
-    return pd.DataFrame({
-        rt_col: x_centers[ix],
-        mz_col: y_centers[iy],
-        im_col: z_centers[iz],
-        "count": counts[ix, iy, iz],
-        "agg_value": agg[ix, iy, iz],
-    })
+    return pd.DataFrame(
+        {
+            rt_col: x_centers[ix],
+            mz_col: y_centers[iy],
+            im_col: z_centers[iz],
+            "count": counts[ix, iy, iz],
+            "agg_value": agg[ix, iy, iz],
+        }
+    )
+
 
 def add_binned_intensity_trace(fig, binned_df, row, col, name, cmin, cmax):
     """
@@ -725,7 +760,7 @@ def add_binned_intensity_trace(fig, binned_df, row, col, name, cmin, cmax):
                 colorscale="Viridis",
                 cmin=float(cmin),
                 cmax=float(cmax),
-                showscale=False,   # hide intensity colorbar
+                showscale=False,  # hide intensity colorbar
                 line=dict(width=0),
             ),
             customdata=np.stack(
@@ -747,7 +782,8 @@ def add_binned_intensity_trace(fig, binned_df, row, col, name, cmin, cmax):
         row=row,
         col=col,
     )
-    
+
+
 def add_binned_annotation_traces(
     fig,
     df: pd.DataFrame,
@@ -855,8 +891,16 @@ def add_binned_annotation_traces(
 
     # dummy traces: legend only
     dummy_colors = [
-        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
-        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+        "#1f77b4",
+        "#ff7f0e",
+        "#2ca02c",
+        "#d62728",
+        "#9467bd",
+        "#8c564b",
+        "#e377c2",
+        "#7f7f7f",
+        "#bcbd22",
+        "#17becf",
     ]
 
     for i, ann in enumerate(annotations):
