@@ -79,7 +79,7 @@ MODEL_COLORS = {
     "LDA": "#2266CC",
     "SVM": "#CC2222",
     "XGBoost": "#22AA33",
-    "MLP": "#11AACC",
+    "Neural Network (MLP)": "#11AACC",
 }
 
 # -----------------------------------------------------------------------------
@@ -281,7 +281,7 @@ def run_semi_supervised(
             )
             m.fit(X_tr, y_tr)
             raw = m.predict_proba(X_scaled)[:, 1]  # P(decoy)
-        elif model_name == "MLP":
+        elif model_name == "Neural Network (MLP)":
             m = MLPClassifier(
                 hidden_layer_sizes=(64, 32, 16),
                 activation="relu",
@@ -443,7 +443,7 @@ def compute_feature_importance_cache(
                 ).fit(X_tr, y_tr)
                 imp_vals = m.feature_importances_
                 imp_label = "XGBoost gain"
-            elif nm == "MLP":
+            elif nm == "Neural Network (MLP)":
                 m = MLPClassifier(
                     hidden_layer_sizes=(64, 32, 16),
                     activation="relu",
@@ -620,7 +620,7 @@ def render_stage_2() -> None:
     available_models = ["LDA", "SVM"]
     if XGBOOST_AVAILABLE:
         available_models.append("XGBoost")
-    available_models += ["MLP"]
+    available_models += ["Neural Network (MLP)"]
 
     st.markdown(
         f"""
@@ -697,7 +697,7 @@ Each model is trained using the **iterative semi-supervised** approach
     st.dataframe(pd.DataFrame(rows).set_index("Model"), use_container_width=True)
 
     st.markdown("""
-                All models improve target-decoy separation to a similar moderate level, but the nonlinear models perform best overall, with XGBoost and Multi-Layer Perceptron (MLP) neural network giving the highest top-1 ROC-AUC and the most identifications at 1% FDR. In this dataset, MLP yields the most IDs, while XGBoost is very close and slightly better by ROC-AUC, suggesting both capture feature interactions that LDA and SVM miss.
+                All models improve target-decoy separation to a similar moderate level, but the nonlinear models perform best overall, with XGBoost and Multi-Layer Perceptron (MLP) neural network giving the highest top-1 ROC-AUC and the most identifications at 1% FDR. In this dataset, Neural Network (MLP) yields the most IDs, while XGBoost is very close and slightly better by ROC-AUC, suggesting both capture feature interactions that LDA and SVM miss.
                 """)
 
     with st.expander("Semi-supervised loop pseudocode"):
@@ -979,7 +979,7 @@ permutation importance are **magnitude-only** measures.
 
     if not st.session_state.importance_cache:
         with st.spinner(
-            "Fitting feature-importance models (including permutation importance for MLP)..."
+            "Fitting feature-importance models (including permutation importance for Neural Network (MLP))..."
         ):
             st.session_state.importance_cache = compute_feature_importance_cache(
                 feat_df=feat_df,
