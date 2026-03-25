@@ -246,14 +246,18 @@ class StreamlitUI:
                     "This means that the original files will be used instead. "
                 )
 
-        if fallback and not any([f for f in Path(files_dir).iterdir() if f.name != "external_files.txt"]):
+        if fallback and not any(
+            [f for f in Path(files_dir).iterdir() if f.name != "external_files.txt"]
+        ):
             if isinstance(fallback, str):
                 fallback = [fallback]
             for f in fallback:
                 c1, _ = st.columns(2)
                 if not Path(files_dir, f).exists():
                     shutil.copy(f, Path(files_dir, Path(f).name))
-            current_files = [f.name for f in files_dir.iterdir() if f.name != "external_files.txt"]
+            current_files = [
+                f.name for f in files_dir.iterdir() if f.name != "external_files.txt"
+            ]
             c1.warning("**No data yet. Using example data file(s).**")
         else:
             if files_dir.exists():
@@ -325,12 +329,18 @@ class StreamlitUI:
                 Default is False (widget changes are isolated for performance).
         """
         if reactive:
-            self._select_input_file_impl(key, name, multiple, display_file_path, reactive)
+            self._select_input_file_impl(
+                key, name, multiple, display_file_path, reactive
+            )
         else:
-            self._select_input_file_fragmented(key, name, multiple, display_file_path, reactive)
+            self._select_input_file_fragmented(
+                key, name, multiple, display_file_path, reactive
+            )
 
     @st.fragment
-    def _select_input_file_fragmented(self, key, name, multiple, display_file_path, reactive):
+    def _select_input_file_fragmented(
+        self, key, name, multiple, display_file_path, reactive
+    ):
         self._select_input_file_impl(key, name, multiple, display_file_path, reactive)
 
     def _select_input_file_impl(self, key, name, multiple, display_file_path, reactive):
@@ -409,32 +419,76 @@ class StreamlitUI:
         if reactive:
             # Render directly in parent context - changes trigger parent rerun
             self._input_widget_impl(
-                key, default, name, help, widget_type, options,
-                min_value, max_value, step_size, display_file_path, on_change
+                key,
+                default,
+                name,
+                help,
+                widget_type,
+                options,
+                min_value,
+                max_value,
+                step_size,
+                display_file_path,
+                on_change,
             )
         else:
             # Render in isolated fragment - changes don't affect parent
             self._input_widget_fragmented(
-                key, default, name, help, widget_type, options,
-                min_value, max_value, step_size, display_file_path, on_change
+                key,
+                default,
+                name,
+                help,
+                widget_type,
+                options,
+                min_value,
+                max_value,
+                step_size,
+                display_file_path,
+                on_change,
             )
 
     @st.fragment
     def _input_widget_fragmented(
-        self, key, default, name, help, widget_type,
-        options, min_value, max_value, step_size,
-        display_file_path, on_change
+        self,
+        key,
+        default,
+        name,
+        help,
+        widget_type,
+        options,
+        min_value,
+        max_value,
+        step_size,
+        display_file_path,
+        on_change,
     ):
         self._input_widget_impl(
-            key, default, name, help, widget_type,
-            options, min_value, max_value, step_size,
-            display_file_path, on_change
+            key,
+            default,
+            name,
+            help,
+            widget_type,
+            options,
+            min_value,
+            max_value,
+            step_size,
+            display_file_path,
+            on_change,
         )
 
     def _input_widget_impl(
-        self, key, default, name, help, widget_type,
-        options, min_value, max_value, step_size,
-        display_file_path, on_change
+        self,
+        key,
+        default,
+        name,
+        help,
+        widget_type,
+        options,
+        min_value,
+        max_value,
+        step_size,
+        display_file_path,
+        on_change,
     ):
         """Internal implementation of input_widget - contains all the widget logic."""
 
@@ -539,7 +593,14 @@ class StreamlitUI:
                 )
 
         elif widget_type == "password":
-            st.text_input(name, value=value, type="password", key=key, help=help, on_change=on_change)
+            st.text_input(
+                name,
+                value=value,
+                type="password",
+                key=key,
+                help=help,
+                on_change=on_change,
+            )
 
         elif widget_type == "auto":
             # Auto-determine widget type based on value
@@ -589,15 +650,31 @@ class StreamlitUI:
                 )
             elif isinstance(value, bool):
                 self._input_widget_impl(
-                    key, value, name=name, help=help, widget_type="checkbox",
-                    options=None, min_value=None, max_value=None, step_size=1,
-                    display_file_path=False, on_change=on_change
+                    key,
+                    value,
+                    name=name,
+                    help=help,
+                    widget_type="checkbox",
+                    options=None,
+                    min_value=None,
+                    max_value=None,
+                    step_size=1,
+                    display_file_path=False,
+                    on_change=on_change,
                 )
             else:
                 self._input_widget_impl(
-                    key, value, name=name, help=help, widget_type="text",
-                    options=None, min_value=None, max_value=None, step_size=1,
-                    display_file_path=False, on_change=on_change
+                    key,
+                    value,
+                    name=name,
+                    help=help,
+                    widget_type="text",
+                    options=None,
+                    min_value=None,
+                    max_value=None,
+                    step_size=1,
+                    display_file_path=False,
+                    on_change=on_change,
                 )
 
         else:
@@ -659,7 +736,7 @@ class StreamlitUI:
         param = poms.Param()
         poms.ParamXMLFile().load(str(ini_file_path), param)
 
-        def _matches_parameter(pattern: str, key: bytes) -> bool:
+        def _matches_parameter(pattern: str, key: bytes | str) -> bool:
             """
             Match pattern against TOPP parameter key using suffix matching.
 
@@ -669,7 +746,11 @@ class StreamlitUI:
             bounded by ':' or start of path.
             """
             pattern = pattern.lstrip(":")  # Strip legacy leading colon
-            key_str = key.decode()
+            # Normalize key to string whether bytes or str
+            if isinstance(key, (bytes, bytearray)):
+                key_str = key.decode()
+            else:
+                key_str = str(key)
 
             # Extract param path after "ToolName:1:"
             parts = key_str.split(":")
@@ -678,7 +759,7 @@ class StreamlitUI:
             # Check if pattern matches as a suffix, bounded by ':' or start
             return param_path == pattern or param_path.endswith(":" + pattern)
 
-        # Always apply base exclusions (input/output files, standard excludes)
+        # Always apply base exclusions (standard excludes)
         excluded_keys = [
             "log",
             "debug",
@@ -689,20 +770,31 @@ class StreamlitUI:
             "test",
         ] + exclude_parameters
 
+        # Normalize tags to strings and filter keys
+        def has_io_tag(key, io_type: str) -> bool:
+            tags = [
+                t.decode() if isinstance(t, (bytes, bytearray)) else str(t)
+                for t in param.getTags(key)
+            ]
+            for t in tags:
+                tt = t.lower()
+                if io_type == "input" and "input" in tt and "file" in tt:
+                    return True
+                if io_type == "output" and "output" in tt and "file" in tt:
+                    return True
+            return False
+
         valid_keys = [
             key
             for key in param.keys()
-            if not (
-                b"input file" in param.getTags(key)
-                or b"output file" in param.getTags(key)
-                or any([_matches_parameter(k, key) for k in excluded_keys])
-            )
+            if not any([_matches_parameter(k, key) for k in excluded_keys])
         ]
 
         # Track which keys are "included" (shown by default) vs "non-included" (advanced only)
         if include_parameters:
             included_keys = {
-                key for key in valid_keys
+                key
+                for key in valid_keys
                 if any([_matches_parameter(k, key) for k in include_parameters])
             }
         else:
@@ -710,31 +802,69 @@ class StreamlitUI:
         params = []
         for key in valid_keys:
             entry = param.getEntry(key)
+            # Normalize key and string fields to plain str
+            if isinstance(key, (bytes, bytearray)):
+                key_str = key.decode()
+            else:
+                key_str = str(key)
+
+            name = (
+                entry.name.decode()
+                if isinstance(entry.name, (bytes, bytearray))
+                else str(entry.name)
+            )
+            description = (
+                entry.description.decode()
+                if isinstance(entry.description, (bytes, bytearray))
+                else str(entry.description)
+            )
+            valid_strings = [
+                v.decode() if isinstance(v, (bytes, bytearray)) else str(v)
+                for v in entry.valid_strings
+            ]
+
+            # Normalize entry value (bytes -> str, list of bytes -> list of str)
+            val = entry.value
+            if isinstance(val, (bytes, bytearray)):
+                val = val.decode()
+            elif isinstance(val, list):
+                val = [
+                    v.decode() if isinstance(v, (bytes, bytearray)) else v for v in val
+                ]
+
+            # collect tags as decoded strings for later widget decisions
+            tags = [
+                t.decode() if isinstance(t, (bytes, bytearray)) else str(t)
+                for t in param.getTags(key)
+            ]
+
+            # determine advanced flag from decoded tags
+            is_advanced = any("advanced" in t.lower() for t in tags)
+
             p = {
-                "name": entry.name.decode(),
-                "key": key,
-                "value": entry.value,
+                "name": name,
+                "key": key_str,
+                "value": val,
                 "original_is_list": isinstance(entry.value, list),
-                "valid_strings": [v.decode() for v in entry.valid_strings],
-                "description": entry.description.decode(),
-                "advanced": (b"advanced" in param.getTags(key)),
+                "valid_strings": valid_strings,
+                "description": description,
+                "tags": tags,
+                "advanced": is_advanced,
                 "non_included": key not in included_keys,
                 "section_description": param.getSectionDescription(
-                    ":".join(key.decode().split(":")[:-1])
+                    ":".join(key_str.split(":")[:-1])
                 ),
             }
             # Parameter sections and subsections as string (e.g. "section:subsection")
             if display_subsections:
-                p["sections"] = ":".join(
-                    p["key"].decode().split(":1:")[1].split(":")[:-1]
-                )
+                p["sections"] = ":".join(p["key"].split(":1:")[1].split(":")[:-1])
             params.append(p)
 
         # for each parameter in params_decoded
         # if a parameter with custom default value exists, use that value
         # else check if the parameter is already in self.params, if yes take the value from self.params
         for p in params:
-            name = p["key"].decode().split(":1:")[1]
+            name = p["key"].split(":1:")[1]
             if topp_tool_name in self.params:
                 if name in self.params[topp_tool_name]:
                     p["value"] = self.params[topp_tool_name][name]
@@ -753,7 +883,9 @@ class StreamlitUI:
         if display_subsections:
             for p in params:
                 # Skip advanced/non-included parameters if toggle not enabled
-                if not st.session_state["advanced"] and (p["advanced"] or p["non_included"]):
+                if not st.session_state["advanced"] and (
+                    p["advanced"] or p["non_included"]
+                ):
                     continue
                 # Add section description to section_descriptions dictionary if it exists
                 if p["section_description"]:
@@ -769,8 +901,10 @@ class StreamlitUI:
             # Simply put all parameters in "all" section if no subsections required
             # Filter advanced/non-included parameters if toggle not enabled
             param_sections["all"] = [
-                p for p in params
-                if st.session_state["advanced"] or (not p["advanced"] and not p["non_included"])
+                p
+                for p in params
+                if st.session_state["advanced"]
+                or (not p["advanced"] and not p["non_included"])
             ]
 
         # Display tool name if required
@@ -803,10 +937,54 @@ class StreamlitUI:
             cols = st.columns(num_cols)
             i = 0
             for p in params:
-                # get key and name
-                key = f"{self.parameter_manager.topp_param_prefix}{p['key'].decode()}"
+                # get key and name (p['key'] is normalized to str)
+                key = f"{self.parameter_manager.topp_param_prefix}{p['key']}"
                 name = p["name"]
+                tags = [t.lower() for t in p.get("tags", [])]
                 try:
+                    # Handle input/output file parameters using file uploader / path input
+                    if any(("input" in t and "file" in t) for t in tags):
+                        # allow multiple files if original param was a list or named 'in'
+                        multiple = (
+                            p.get("original_is_list", False)
+                            or p["key"].endswith(":in")
+                            or p["key"] == "in"
+                        )
+                        cols[i].markdown("##")
+                        files = cols[i].file_uploader(
+                            name,
+                            accept_multiple_files=multiple,
+                            help=p["description"],
+                            key=key,
+                        )
+                        # store uploaded filenames/paths in session_state as comma-separated
+                        if files is not None:
+                            if multiple:
+                                st.session_state[key] = "\n".join(
+                                    [getattr(f, "name", str(f)) for f in files]
+                                )
+                            else:
+                                st.session_state[key] = getattr(
+                                    files, "name", str(files)
+                                )
+                        i += 1
+                        if i == num_cols:
+                            i = 0
+                            cols = st.columns(num_cols)
+                        continue
+                    if any(("output" in t and "file" in t) for t in tags):
+                        # offer a text input for output path
+                        cols[i].text_input(
+                            name,
+                            value=p.get("value", ""),
+                            help=p["description"],
+                            key=key,
+                        )
+                        i += 1
+                        if i == num_cols:
+                            i = 0
+                            cols = st.columns(num_cols)
+                        continue
                     # sometimes strings with newline, handle as list
                     if isinstance(p["value"], str) and "\n" in p["value"]:
                         p["value"] = p["value"].split("\n")
@@ -828,10 +1006,22 @@ class StreamlitUI:
                     elif isinstance(p["value"], str):
                         # string options
                         if p["valid_strings"]:
+                            # If current value not in valid options, prepend it so it's selectable
+                            try:
+                                idx = p["valid_strings"].index(p["value"])
+                                options = p["valid_strings"]
+                            except ValueError:
+                                if p["value"]:
+                                    options = [p["value"]] + p["valid_strings"]
+                                    idx = 0
+                                else:
+                                    options = p["valid_strings"]
+                                    idx = 0
+
                             cols[i].selectbox(
                                 name,
-                                options=p["valid_strings"],
-                                index=p["valid_strings"].index(p["value"]),
+                                options=options,
+                                index=idx,
                                 help=p["description"],
                                 key=key,
                             )
@@ -864,9 +1054,11 @@ class StreamlitUI:
                         ]
 
                         # Use multiselect when valid_strings are available for better UX
-                        if len(p['valid_strings']) > 0:
+                        if len(p["valid_strings"]) > 0:
                             # Filter current values to only include valid options
-                            current_values = [v for v in p["value"] if v in p['valid_strings']]
+                            current_values = [
+                                v for v in p["value"] if v in p["valid_strings"]
+                            ]
 
                             # Use a display key for multiselect (stores list), sync to main key (stores string)
                             display_key = f"{key}_display"
@@ -876,7 +1068,7 @@ class StreamlitUI:
 
                             cols[i].multiselect(
                                 name,
-                                options=sorted(p['valid_strings']),
+                                options=sorted(p["valid_strings"]),
                                 default=current_values,
                                 help=p["description"],
                                 key=display_key,
@@ -891,7 +1083,8 @@ class StreamlitUI:
                             cols[i].text_area(
                                 name,
                                 value="\n".join([str(val) for val in p["value"]]),
-                                help=p["description"] + " Separate entries using the \"Enter\" key.",
+                                help=p["description"]
+                                + ' Separate entries using the "Enter" key.',
                                 key=key,
                             )
 
@@ -904,19 +1097,38 @@ class StreamlitUI:
                     cols[i].error(f"Error in parameter **{p['name']}**.")
                     print('Error parsing "' + p["name"] + '": ' + str(e))
 
-
+        # Group subsections under top-level sections (e.g., Calibration, Scoring)
+        top_groups = {}
         for section, params in param_sections.items():
-            if tabs is None:
-                show_subsection_header(section, display_subsections)
-                display_TOPP_params(params, num_cols)
-            else:
-                tab_name = section.split(":")[0]
-                with tabs[tab_names.index(tab_name)]:
-                    show_subsection_header(section, display_subsections)
-                    display_TOPP_params(params, num_cols)
-        
+            top = section.split(":")[0] if section else "General"
+            if top == "":
+                top = "General"
+            top_groups.setdefault(top, {})[section] = params
+
+        # Desired ordering for primary groups; others go after alphabetically
+        desired_order = ["General", "Debugging", "Calibration", "MRMapping", "Scoring"]
+        remaining = [t for t in sorted(top_groups.keys()) if t not in desired_order]
+        ordered_tops = [t for t in desired_order if t in top_groups] + remaining
+
+        for top in ordered_tops:
+            # Top-level expander
+            with st.expander(top, expanded=(top == "General")):
+                subsections = top_groups[top]
+                for subsection, params in subsections.items():
+                    # For sections where subsection name equals top, show params directly
+                    if subsection == top or subsection == "all":
+                        # show description if present
+                        if subsection in section_descriptions:
+                            st.caption(section_descriptions[subsection])
+                        display_TOPP_params(params, num_cols)
+                    else:
+                        # nested expander for deeper subsection
+                        with st.expander(subsection.split(":", 1)[-1], expanded=False):
+                            if subsection in section_descriptions:
+                                st.caption(section_descriptions[subsection])
+                            display_TOPP_params(params, num_cols)
+
         self.parameter_manager.save_parameters()
-            
 
     @st.fragment
     def input_python(
@@ -1118,7 +1330,7 @@ class StreamlitUI:
                 name="Threads",
                 widget_type="number",
                 min_value=1,
-                help="Maximum threads for parallel processing. Threads are distributed between parallel commands and per-tool thread allocation."
+                help="Maximum threads for parallel processing. Threads are distributed between parallel commands and per-tool thread allocation.",
             )
 
         # Display preset buttons if presets are available for this workflow
@@ -1126,7 +1338,7 @@ class StreamlitUI:
 
         custom_parameter_function()
 
-        # File Import / Export section       
+        # File Import / Export section
         st.markdown("---")
         cols = st.columns(3)
         with cols[0]:
@@ -1164,7 +1376,7 @@ class StreamlitUI:
             up = st.file_uploader(
                 "⬆️ Import parameters",
                 help="Import previously exported parameters.",
-                key="param_import_uploader"
+                key="param_import_uploader",
             )
             if up is not None:
                 with open(self.parameter_manager.params_file, "w") as f:
@@ -1177,7 +1389,7 @@ class StreamlitUI:
         self,
         start_workflow_function,
         get_status_function=None,
-        stop_workflow_function=None
+        stop_workflow_function=None,
     ) -> None:
         with st.expander("**Summary**"):
             st.markdown(self.export_parameters_markdown())
@@ -1193,8 +1405,7 @@ class StreamlitUI:
             st.session_state.log_lines_count = 100
 
         log_lines_count = c2.selectbox(
-            "lines to show", [50, 100, 200, 500, "all"],
-            index=1, key="log_lines_select"
+            "lines to show", [50, 100, 200, 500, "all"], index=1, key="log_lines_select"
         )
         if log_lines_count != "all":
             st.session_state.log_lines_count = log_lines_count
@@ -1209,7 +1420,9 @@ class StreamlitUI:
         job_status = status.get("status", "idle")
 
         # Fallback to PID check for backward compatibility
-        pid_exists = self.executor.pid_dir.exists() and list(self.executor.pid_dir.iterdir())
+        pid_exists = self.executor.pid_dir.exists() and list(
+            self.executor.pid_dir.iterdir()
+        )
         if not is_running and pid_exists:
             is_running = True
             job_status = "running"
@@ -1250,7 +1463,7 @@ class StreamlitUI:
                     if log_lines_count == "all":
                         display_lines = lines
                     else:
-                        display_lines = lines[-st.session_state.log_lines_count:]
+                        display_lines = lines[-st.session_state.log_lines_count :]
                     st.code(
                         "".join(display_lines),
                         language="neon",
@@ -1277,7 +1490,7 @@ class StreamlitUI:
             if log_lines_count == "all":
                 display_lines = lines
             else:
-                display_lines = lines[-st.session_state.log_lines_count:]
+                display_lines = lines[-st.session_state.log_lines_count :]
             st.code("".join(display_lines), language="neon", line_numbers=False)
 
     def _show_queue_status(self, status: dict) -> None:
@@ -1299,7 +1512,9 @@ class StreamlitUI:
         if job_status == "queued":
             queue_position = status.get("queue_position", "?")
             queue_length = status.get("queue_length", "?")
-            st.info(f"**Status: {label}** - Your workflow is #{queue_position} in the queue ({queue_length} total jobs)")
+            st.info(
+                f"**Status: {label}** - Your workflow is #{queue_position} in the queue ({queue_length} total jobs)"
+            )
 
         elif job_status == "started":
             current_step = status.get("current_step", "Processing...")
@@ -1308,7 +1523,11 @@ class StreamlitUI:
         elif job_status == "finished":
             # Check if the job result indicates success or failure
             job_result = status.get("result")
-            if job_result and isinstance(job_result, dict) and job_result.get("success") is False:
+            if (
+                job_result
+                and isinstance(job_result, dict)
+                and job_result.get("success") is False
+            ):
                 st.error(f"**Status: Completed with errors**")
                 error_msg = job_result.get("error", "Unknown error")
                 if error_msg:
@@ -1326,11 +1545,9 @@ class StreamlitUI:
 
         # Expandable job details
         with st.expander("Job Details", expanded=False):
-            st.code(f"""Job ID: {status.get('job_id', 'N/A')}
-Submitted: {status.get('enqueued_at', 'N/A')}
-Started: {status.get('started_at', 'N/A')}""")
-
-
+            st.code(f"""Job ID: {status.get("job_id", "N/A")}
+Submitted: {status.get("enqueued_at", "N/A")}
+Started: {status.get("started_at", "N/A")}""")
 
     def results_section(self, custom_results_function) -> None:
         custom_results_function()
@@ -1421,7 +1638,7 @@ Started: {status.get('started_at', 'N/A')}""")
             version = result.stderr.split("Version: ")[1].split("-")[0]
 
         markdown.append(
-            f"""Data was processed using **{st.session_state.settings['app-name']}** ([{url}]({url})), a web application based on the OpenMS WebApps framework [1].
+            f"""Data was processed using **{st.session_state.settings["app-name"]}** ([{url}]({url})), a web application based on the OpenMS WebApps framework [1].
 OpenMS ([https://www.openms.de](https://www.openms.de)) is a free and open-source software for LC-MS data analysis [2].
 The workflow includes the **OpenMS {version}** TOPP tools {tools} as well as Python scripts. Non-default parameters are listed in the supplementary section below.
 
