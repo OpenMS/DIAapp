@@ -5,6 +5,7 @@ import subprocess
 import streamlit as st
 from pathlib import Path
 
+
 class ParameterManager:
     """
     Manages the parameters for a workflow, including saving parameters to a JSON file,
@@ -19,6 +20,7 @@ class ParameterManager:
         topp_param_prefix (str): Prefix for TOPP tool parameter keys in Streamlit's session state.
         workflow_name (str): Name of the workflow, used for loading presets.
     """
+
     # Methods related to parameter handling
     def __init__(self, workflow_dir: Path, workflow_name: str = None):
         self.ini_dir = Path(workflow_dir, "ini")
@@ -94,6 +96,10 @@ class ParameterManager:
                         continue
                     # get ini_key
                     ini_key = key.replace(self.topp_param_prefix, "").encode()
+                    # Skip keys that don't correspond to actual ini entries
+                    # (e.g., widget-specific keys like uploaders or display helpers)
+                    if ini_key not in param.keys():
+                        continue
                     # get ini (default) value by ini_key
                     ini_value = param.getValue(ini_key)
                     is_list_param = isinstance(ini_value, list)
@@ -101,7 +107,9 @@ class ParameterManager:
                     if (
                         (ini_value != value)
                         or (key.split(":1:")[1] in json_params[tool])
-                        or (is_list_param and not value)  # Always save empty list params
+                        or (
+                            is_list_param and not value
+                        )  # Always save empty list params
                     ):
                         # store non-default value
                         json_params[tool][key.split(":1:")[1]] = value
@@ -127,7 +135,9 @@ class ParameterManager:
                 with open(self.params_file, "r", encoding="utf-8") as f:
                     return json.load(f)
             except:
-                st.error("**ERROR**: Attempting to load an invalid JSON parameter file. Reset to defaults.")
+                st.error(
+                    "**ERROR**: Attempting to load an invalid JSON parameter file. Reset to defaults."
+                )
                 return {}
 
     def get_topp_parameters(self, tool: str) -> dict:
@@ -283,8 +293,10 @@ class ParameterManager:
         on the next rerun, rather than using potentially stale session_state values.
         """
         keys_to_delete = [
-            key for key in list(st.session_state.keys())
-            if key.startswith(self.param_prefix) or key.startswith(self.topp_param_prefix)
+            key
+            for key in list(st.session_state.keys())
+            if key.startswith(self.param_prefix)
+            or key.startswith(self.topp_param_prefix)
         ]
         for key in keys_to_delete:
             del st.session_state[key]
