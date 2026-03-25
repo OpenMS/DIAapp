@@ -98,6 +98,11 @@ if __name__ == "__main__":
                 title="Log Viewer",
                 icon="🧾",
             ),
+            st.Page(
+                Path("content", "workspace_viewer.py"),
+                title="Workspace Viewer",
+                icon="📁",
+            ),
         ],
     }
 
