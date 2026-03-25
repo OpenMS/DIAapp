@@ -17,6 +17,7 @@ page_setup()
 # -----------------------------------
 #   Helpers
 
+
 def fig_to_st(fig, caption: str | None = None, dpi: int = 130) -> None:
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight", facecolor="white")
@@ -28,7 +29,8 @@ def fig_to_st(fig, caption: str | None = None, dpi: int = 130) -> None:
 def load_gif_b64(path: str) -> str:
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
-        
+
+
 # -----------------------------------
 #   Page content
 
@@ -44,7 +46,7 @@ section on the next page.
 
 # Table of contents (linked to actual subheaders)
 st.markdown(
-        """
+    """
 <div style="margin-bottom:12px">
     <strong>Table of contents</strong>
     <ul>
@@ -62,7 +64,7 @@ st.markdown(
     </ul>
 </div>
 """,
-        unsafe_allow_html=True,
+    unsafe_allow_html=True,
 )
 
 # ------------------------------------
@@ -110,23 +112,23 @@ N = len(SEQUENCE)
 B_COLOR = "#2266CC"
 Y_COLOR = "#CC2222"
 
-FIG_W   = 14.5
-SEQ_Y   = 2.5      # y-level of amino-acid letters (backbone centre)
-TICK_UP = 0.55     # vertical tick length above backbone for y-ion brackets
-TICK_DN = 0.55     # vertical tick length below backbone for b-ion brackets
-LBL_OFF = 0.28     # extra gap between tick end and ion label
+FIG_W = 14.5
+SEQ_Y = 2.5  # y-level of amino-acid letters (backbone centre)
+TICK_UP = 0.55  # vertical tick length above backbone for y-ion brackets
+TICK_DN = 0.55  # vertical tick length below backbone for b-ion brackets
+LBL_OFF = 0.28  # extra gap between tick end and ion label
 
 # x-positions for residues and cleavage bonds
-xs     = np.linspace(1.2, FIG_W - 1.2, N)
+xs = np.linspace(1.2, FIG_W - 1.2, N)
 x_cuts = [(xs[i] + xs[i + 1]) / 2 for i in range(N - 1)]
 
 # N-terminus and C-terminus horizontal extent
-x_nterm = xs[0]  - 0.55   # left edge of the backbone line
-x_cterm = xs[-1] + 0.55   # right edge of the backbone line
+x_nterm = xs[0] - 0.55  # left edge of the backbone line
+x_cterm = xs[-1] + 0.55  # right edge of the backbone line
 
 # Thin backbone line connecting all residues
-Y_BACK_UP = SEQ_Y + 0.30   # where y-ion tick starts (just above letters)
-Y_BACK_DN = SEQ_Y - 0.30   # where b-ion tick starts (just below letters)
+Y_BACK_UP = SEQ_Y + 0.30  # where y-ion tick starts (just above letters)
+Y_BACK_DN = SEQ_Y - 0.30  # where b-ion tick starts (just below letters)
 
 fig_ladder, ax_l = plt.subplots(figsize=(FIG_W, 4.0))
 ax_l.set_xlim(-1.5, FIG_W)
@@ -134,53 +136,100 @@ ax_l.set_ylim(-0.2, 5.4)
 ax_l.axis("off")
 
 
-# Residue letters and thin backbone dashes 
+# Residue letters and thin backbone dashes
 for aa, x in zip(SEQUENCE, xs):
-    ax_l.text(x, SEQ_Y, aa, ha="center", va="center",
-              fontsize=15, fontweight="bold", color="#111111",
-              fontfamily="monospace", zorder=4)
+    ax_l.text(
+        x,
+        SEQ_Y,
+        aa,
+        ha="center",
+        va="center",
+        fontsize=15,
+        fontweight="bold",
+        color="#111111",
+        fontfamily="monospace",
+        zorder=4,
+    )
 for i in range(N - 1):
-    ax_l.plot([xs[i] + 0.30, xs[i + 1] - 0.30], [SEQ_Y, SEQ_Y],
-              color="#BBBBBB", lw=1.0, zorder=1)
+    ax_l.plot(
+        [xs[i] + 0.30, xs[i + 1] - 0.30],
+        [SEQ_Y, SEQ_Y],
+        color="#BBBBBB",
+        lw=1.0,
+        zorder=1,
+    )
 
 # b-ion brackets (inverted-L, blue): vertical DOWN then horizontal LEFT
 b_labels_shown = {1, 2, 3, 4, 10}
 for i, x_cut in enumerate(x_cuts, start=1):
-    y_top  = Y_BACK_DN            # start of tick (just below letters)
-    y_bot  = y_top  - TICK_DN     # end of tick (bottom of bracket)
+    y_top = Y_BACK_DN  # start of tick (just below letters)
+    y_bot = y_top - TICK_DN  # end of tick (bottom of bracket)
     # Vertical tick downward
     ax_l.plot([x_cut, x_cut], [y_top, y_bot], color=B_COLOR, lw=1.5, zorder=3)
     # Horizontal leg going LEFT to N-terminus
     ax_l.plot([x_nterm, x_cut], [y_bot, y_bot], color=B_COLOR, lw=1.5, zorder=3)
     # Label
     if i in b_labels_shown:
-        ax_l.text(x_cut, y_bot - LBL_OFF, f"b{i}",
-                  ha="center", va="top", fontsize=9.5,
-                  color=B_COLOR, fontweight="bold")
+        ax_l.text(
+            x_cut,
+            y_bot - LBL_OFF,
+            f"b{i}",
+            ha="center",
+            va="top",
+            fontsize=9.5,
+            color=B_COLOR,
+            fontweight="bold",
+        )
 
-# y-ion brackets (L-shape, red): vertical UP then horizontal RIGHT 
+# y-ion brackets (L-shape, red): vertical UP then horizontal RIGHT
 for j in range(1, N):
     # y_j cleavage is after the (N-j)-th residue
-    x_cut  = x_cuts[N - 1 - j]
-    y_bot2 = Y_BACK_UP             # start of tick (just above letters)
-    y_top2 = y_bot2 + TICK_UP      # end of tick (top of bracket)
+    x_cut = x_cuts[N - 1 - j]
+    y_bot2 = Y_BACK_UP  # start of tick (just above letters)
+    y_top2 = y_bot2 + TICK_UP  # end of tick (top of bracket)
     # Vertical tick upward
     ax_l.plot([x_cut, x_cut], [y_bot2, y_top2], color=Y_COLOR, lw=1.5, zorder=3)
     # Horizontal leg going RIGHT to C-terminus
     ax_l.plot([x_cut, x_cterm], [y_top2, y_top2], color=Y_COLOR, lw=1.5, zorder=3)
     # Label
-    ax_l.text(x_cut, y_top2 + LBL_OFF, f"y{j}",
-              ha="center", va="bottom", fontsize=9.5,
-              color=Y_COLOR, fontweight="bold")
+    ax_l.text(
+        x_cut,
+        y_top2 + LBL_OFF,
+        f"y{j}",
+        ha="center",
+        va="bottom",
+        fontsize=9.5,
+        color=Y_COLOR,
+        fontweight="bold",
+    )
 
 # Legend
-ax_l.text(-1.3, Y_BACK_UP + TICK_UP + LBL_OFF, "y-ions (C-terminal)",
-          ha="left", va="bottom", fontsize=9, color=Y_COLOR, fontweight="bold")
-ax_l.text(-1.3, Y_BACK_DN - TICK_DN - LBL_OFF, "b-ions (N-terminal)",
-          ha="left", va="top", fontsize=9, color=B_COLOR, fontweight="bold")
+ax_l.text(
+    -1.3,
+    Y_BACK_UP + TICK_UP + LBL_OFF,
+    "y-ions (C-terminal)",
+    ha="left",
+    va="bottom",
+    fontsize=9,
+    color=Y_COLOR,
+    fontweight="bold",
+)
+ax_l.text(
+    -1.3,
+    Y_BACK_DN - TICK_DN - LBL_OFF,
+    "b-ions (N-terminal)",
+    ha="left",
+    va="top",
+    fontsize=9,
+    color=B_COLOR,
+    fontweight="bold",
+)
 
-ax_l.set_title("Peptide fragment ion nomenclature — b/y ladder for WNQLQAFWGTGK",
-               fontsize=10, pad=6)
+ax_l.set_title(
+    "Peptide fragment ion nomenclature — b/y ladder for WNQLQAFWGTGK",
+    fontsize=10,
+    pad=6,
+)
 fig_ladder.tight_layout()
 fig_to_st(
     fig_ladder,
@@ -231,10 +280,7 @@ st.subheader("Data-Dependent vs Data-Independent Acquisition")
 
 st.markdown(
     """
-Historically, the dominant tandem-MS strategy was **Data-Dependent Acquisition
-(DDA)**, also called *shotgun proteomics*. In DDA the instrument monitors the
-MS1 spectrum and selects the **top N most abundant precursors** in each cycle
-for fragmentation. While straightforward, DDA has two fundamental limitations:
+Historically, the dominant tandem-MS strategy for discovery-based proteomics  was **Data-Dependent Acquisition (DDA)**, also called *shotgun proteomics*. In DDA the instrument monitors the MS1 spectrum and selects the **top N most abundant precursors** in each cycle for fragmentation. While straightforward, DDA has two fundamental limitations:
 
 1. **Stochastic sampling** — whether a given peptide is selected for
    fragmentation depends on its abundance relative to co-eluting peptides.
@@ -254,11 +300,12 @@ implementation and was introduced to overcome both limitations
 # DDA vs DIA figure
 
 _rng_shared = np.random.default_rng(42)
-N_PEPS    = 28
-PEP_RT    = _rng_shared.uniform(0.8, 9.0, N_PEPS)
-PEP_MZ    = _rng_shared.uniform(0.9, 7.8, N_PEPS)
-PEP_INT   = _rng_shared.exponential(0.5, N_PEPS) + 0.15
-PEP_INT  /= PEP_INT.max()
+N_PEPS = 28
+PEP_RT = _rng_shared.uniform(0.8, 9.0, N_PEPS)
+PEP_MZ = _rng_shared.uniform(0.9, 7.8, N_PEPS)
+PEP_INT = _rng_shared.exponential(0.5, N_PEPS) + 0.15
+PEP_INT /= PEP_INT.max()
+
 
 def draw_isotope_traces(ax, rt_c, mz_c, intensity, color="#333333"):
     """
@@ -267,18 +314,26 @@ def draw_isotope_traces(ax, rt_c, mz_c, intensity, color="#333333"):
     proportionally to intensity so high-abundance peptides stand out.
     The three isotopes are spaced 0.20 m/z-units apart (in display coords).
     """
-    ISO_SEP  = 0.20   # m/z gap between isotope peaks (display units)
-    MAX_H    = 0.70   # max height of the M+0 peak (display units)
-    ISO_REL  = [1.00, 0.60, 0.28]   # relative heights of M, M+1, M+2
-    LW_BASE  = 2.5    # base line width
-    ALPHA    = [0.95, 0.75, 0.50]   # alpha per isotope
+    ISO_SEP = 0.20  # m/z gap between isotope peaks (display units)
+    MAX_H = 0.70  # max height of the M+0 peak (display units)
+    ISO_REL = [1.00, 0.60, 0.28]  # relative heights of M, M+1, M+2
+    LW_BASE = 2.5  # base line width
+    ALPHA = [0.95, 0.75, 0.50]  # alpha per isotope
 
     for k, (rel, alp) in enumerate(zip(ISO_REL, ALPHA)):
-        h   = MAX_H * intensity * rel
+        h = MAX_H * intensity * rel
         mz_k = mz_c + k * ISO_SEP
-        lw  = (LW_BASE + intensity * 1.8) * (1.0 - k * 0.20)
-        ax.plot([rt_c, rt_c], [mz_k, mz_k + h],
-                color=color, lw=lw, alpha=alp, solid_capstyle="butt", zorder=3)
+        lw = (LW_BASE + intensity * 1.8) * (1.0 - k * 0.20)
+        ax.plot(
+            [rt_c, rt_c],
+            [mz_k, mz_k + h],
+            color=color,
+            lw=lw,
+            alpha=alp,
+            solid_capstyle="butt",
+            zorder=3,
+        )
+
 
 def draw_acquisition_panel(ax, mode="DDA"):
     # Plot area: x=0–10 (RT), y=0–8.5 (m/z)
@@ -286,41 +341,73 @@ def draw_acquisition_panel(ax, mode="DDA"):
     ax.set_ylim(-1.2, 8.8)
     ax.axis("off")
 
-    # Axes arrows 
-    ax.annotate("", xy=(9.9, 0.3), xytext=(0.2, 0.3),
-                arrowprops=dict(arrowstyle="->", color="black", lw=1.5))
+    # Axes arrows
+    ax.annotate(
+        "",
+        xy=(9.9, 0.3),
+        xytext=(0.2, 0.3),
+        arrowprops=dict(arrowstyle="->", color="black", lw=1.5),
+    )
     ax.text(5.0, -0.25, "Retention Time", ha="center", fontsize=9.5)
-    ax.annotate("", xy=(0.3, 8.5), xytext=(0.3, 0.3),
-                arrowprops=dict(arrowstyle="->", color="black", lw=1.5))
+    ax.annotate(
+        "",
+        xy=(0.3, 8.5),
+        xytext=(0.3, 0.3),
+        arrowprops=dict(arrowstyle="->", color="black", lw=1.5),
+    )
     ax.text(-0.05, 4.4, "m/z", ha="center", fontsize=9.5, rotation=90)
 
-    # Isotopic traces for each peptide 
+    # Isotopic traces for each peptide
     for rt, mz, inten in zip(PEP_RT, PEP_MZ, PEP_INT):
         shade = int(30 + (0.15 + inten * 0.55) * 200)
-        draw_isotope_traces(ax, rt, mz, inten,
-                            color=f"#{shade:02x}{shade:02x}{shade:02x}")
+        draw_isotope_traces(
+            ax, rt, mz, inten, color=f"#{shade:02x}{shade:02x}{shade:02x}"
+        )
 
     if mode == "DDA":
-        #  Top-4 selection boxes 
-        top_idx    = np.argsort(PEP_INT)[::-1][:4]
+        #  Top-4 selection boxes
+        top_idx = np.argsort(PEP_INT)[::-1][:4]
         missed_idx = np.argsort(PEP_INT)[:6]
         for idx in top_idx:
             rt, mz = PEP_RT[idx], PEP_MZ[idx]
-            ax.add_patch(mpatches.FancyBboxPatch(
-                (rt - 0.42, mz - 0.30), 0.84, 0.60,
-                boxstyle="round,pad=0.06",
-                edgecolor="#E63333", facecolor="none", lw=1.6, zorder=5))
+            ax.add_patch(
+                mpatches.FancyBboxPatch(
+                    (rt - 0.42, mz - 0.30),
+                    0.84,
+                    0.60,
+                    boxstyle="round,pad=0.06",
+                    edgecolor="#E63333",
+                    facecolor="none",
+                    lw=1.6,
+                    zorder=5,
+                )
+            )
         for idx in missed_idx:
-            ax.scatter(PEP_RT[idx], PEP_MZ[idx] + 0.22, marker="x",
-                       color="#CC7777", s=22, zorder=6, lw=1.2)
-        ax.text(4.7, -0.7, "✗ = below detection threshold (missed)",
-                ha="center", fontsize=7.5, color="#CC7777", style="italic")
+            ax.scatter(
+                PEP_RT[idx],
+                PEP_MZ[idx] + 0.22,
+                marker="x",
+                color="#CC7777",
+                s=22,
+                zorder=6,
+                lw=1.2,
+            )
+        ax.text(
+            4.7,
+            -0.7,
+            "✗ = below detection threshold (missed)",
+            ha="center",
+            fontsize=7.5,
+            color="#CC7777",
+            style="italic",
+        )
 
     else:  # DIA
-        # Equal-height isolation windows 
+        # Equal-height isolation windows
         # 5 equal windows covering m/z 0.8 – 8.0 = width 1.44 each
-        WIN_LO = 0.80; WIN_HI = 8.00
-        N_WIN  = 5
+        WIN_LO = 0.80
+        WIN_HI = 8.00
+        N_WIN = 5
         win_edges = np.linspace(WIN_LO, WIN_HI, N_WIN + 1)
         win_colors = ["#FFF3E0", "#E8F0FF", "#F0FFF4", "#FFF0F0", "#F5F0FF"]
 
@@ -335,16 +422,29 @@ def draw_acquisition_panel(ax, mode="DDA"):
                 wlo = win_edges[w_i]
                 whi = win_edges[w_i + 1]
                 xmid = arrow_xs[w_i]
-                ax.annotate("", xy=(xmid, whi - 0.10), xytext=(xmid, wlo + 0.10),
-                            arrowprops=dict(arrowstyle="<->", color="#777777",
-                                            lw=0.9, mutation_scale=7),
-                            zorder=5)
+                ax.annotate(
+                    "",
+                    xy=(xmid, whi - 0.10),
+                    xytext=(xmid, wlo + 0.10),
+                    arrowprops=dict(
+                        arrowstyle="<->", color="#777777", lw=0.9, mutation_scale=7
+                    ),
+                    zorder=5,
+                )
 
-# Build the 2-panel figure 
+
+# Build the 2-panel figure
 fig_acq, axes_acq = plt.subplots(
-    1, 2, figsize=(12.5, 5.5),
-    gridspec_kw={"left": 0.04, "right": 0.98, "top": 0.82, "bottom": 0.12,
-                 "wspace": 0.10}
+    1,
+    2,
+    figsize=(12.5, 5.5),
+    gridspec_kw={
+        "left": 0.04,
+        "right": 0.98,
+        "top": 0.82,
+        "bottom": 0.12,
+        "wspace": 0.10,
+    },
 )
 
 
@@ -355,22 +455,34 @@ for ax_, mode_ in zip(axes_acq, ["DDA", "DIA"]):
 axes_acq[0].set_title(
     "Data-Dependent Acquisition (DDA)\n"
     r"$\it{Top\text{-}N\ stochastic\ selection\ —\ low\text{-}abundance\ peptides\ missed}$",
-    fontsize=10.5, fontweight="bold", color="#333333", pad=8, loc="center"
+    fontsize=10.5,
+    fontweight="bold",
+    color="#333333",
+    pad=8,
+    loc="center",
 )
 axes_acq[1].set_title(
     "Data-Independent Acquisition (DIA / SWATH)\n"
     r"$\it{All\ windows\ fragmented\ every\ cycle\ —\ complete\ coverage}$",
-    fontsize=10.5, fontweight="bold", color="#333333", pad=8, loc="center"
+    fontsize=10.5,
+    fontweight="bold",
+    color="#333333",
+    pad=8,
+    loc="center",
 )
 
 # Legend for DDA panel
 from matplotlib.lines import Line2D as _Line2D
-b_sel  = mpatches.Patch(facecolor="none", edgecolor="#E63333", lw=1.5,
-                         label="Selected (top-N)")
-b_miss = _Line2D([0], [0], marker="x", color="#CC7777", lw=0,
-                  markersize=7, label="Missed (too dim)")
-axes_acq[0].legend(handles=[b_sel, b_miss], fontsize=8, loc="lower right",
-                   framealpha=0.8)
+
+b_sel = mpatches.Patch(
+    facecolor="none", edgecolor="#E63333", lw=1.5, label="Selected (top-N)"
+)
+b_miss = _Line2D(
+    [0], [0], marker="x", color="#CC7777", lw=0, markersize=7, label="Missed (too dim)"
+)
+axes_acq[0].legend(
+    handles=[b_sel, b_miss], fontsize=8, loc="lower right", framealpha=0.8
+)
 
 fig_to_st(
     fig_acq,
@@ -414,7 +526,7 @@ with st.expander("DDA vs DIA: comparison table"):
 
 # ------------------------------------
 #   SWATH scan cycle
-    
+
 st.markdown("---")
 st.markdown('<a id="swath-scan-cycle"></a>', unsafe_allow_html=True)
 st.subheader("The SWATH-MS Scan Cycle")
@@ -459,8 +571,8 @@ except FileNotFoundError:
     st.warning(
         "Animated GIF not found at `assets/swath_dia_animated.gif`. "
         "Place the file there to display the scan-cycle animation."
-    )    
-    
+    )
+
 # ------------------------------------
 #   Terminology glossary
 
@@ -560,39 +672,50 @@ from matplotlib.colors import LogNorm
 
 fig_pm, axes_pm = plt.subplots(1, 2, figsize=(12, 4.5))
 
-rng2   = np.random.default_rng(99)
-N_RT   = 200; N_MZ = 300
-RT_AX  = np.linspace(0, 60, N_RT)
-MZ_AX  = np.linspace(400, 1200, N_MZ)
+rng2 = np.random.default_rng(99)
+N_RT = 200
+N_MZ = 300
+RT_AX = np.linspace(0, 60, N_RT)
+MZ_AX = np.linspace(400, 1200, N_MZ)
 
 map_ms1 = np.random.default_rng(1).exponential(300, (N_RT, N_MZ))
 map_ms2 = np.random.default_rng(2).exponential(150, (N_RT, N_MZ))
 
+
 def _gauss2d(rt_c, mz_c, rt_s, mz_s, amp):
-    rt_g = np.exp(-((RT_AX - rt_c)**2) / (2 * rt_s**2))
-    mz_g = np.exp(-((MZ_AX - mz_c)**2) / (2 * mz_s**2))
+    rt_g = np.exp(-((RT_AX - rt_c) ** 2) / (2 * rt_s**2))
+    mz_g = np.exp(-((MZ_AX - mz_c) ** 2) / (2 * mz_s**2))
     return amp * np.outer(rt_g, mz_g)
 
+
 for _ in range(40):
-    rt_c = rng2.uniform(3, 57); mz_c = rng2.uniform(420, 1180)
-    amp  = 10 ** rng2.uniform(3.5, 6.0)
+    rt_c = rng2.uniform(3, 57)
+    mz_c = rng2.uniform(420, 1180)
+    amp = 10 ** rng2.uniform(3.5, 6.0)
     map_ms1 += _gauss2d(rt_c, mz_c, rng2.uniform(0.6, 1.5), rng2.uniform(1.5, 4.0), amp)
 
 for _ in range(180):
-    rt_c = rng2.uniform(3, 57); mz_c = rng2.uniform(100, 1100)
-    amp  = 10 ** rng2.uniform(2.5, 5.0)
+    rt_c = rng2.uniform(3, 57)
+    mz_c = rng2.uniform(100, 1100)
+    amp = 10 ** rng2.uniform(2.5, 5.0)
     map_ms2 += _gauss2d(rt_c, mz_c, rng2.uniform(0.5, 1.2), rng2.uniform(0.5, 2.0), amp)
 
 for ax_pm, data, title, mz_lo, mz_hi in zip(
     axes_pm,
     [map_ms1, map_ms2],
     ["MS1: Precursor ions", "MS2: Fragment ions (one window)"],
-    [400, 100], [1200, 1200]
+    [400, 100],
+    [1200, 1200],
 ):
     mz_ax = np.linspace(mz_lo, mz_hi, N_MZ)
-    ax_pm.pcolormesh(RT_AX, mz_ax, data.T,
-                     norm=LogNorm(vmin=max(data.min(), 1e2), vmax=data.max()),
-                     cmap="inferno", shading="auto")
+    ax_pm.pcolormesh(
+        RT_AX,
+        mz_ax,
+        data.T,
+        norm=LogNorm(vmin=max(data.min(), 1e2), vmax=data.max()),
+        cmap="inferno",
+        shading="auto",
+    )
     ax_pm.set_xlabel("Retention Time (min)", fontsize=10)
     ax_pm.set_ylabel("m/z", fontsize=10)
     ax_pm.set_title(title, fontsize=11, fontweight="bold")
@@ -631,7 +754,7 @@ st.subheader("Spectral Libraries and Transitions")
 
 
 st.markdown(
-        """
+    """
 A **spectral library** (also called an *assay library* or *transition library*)
 is the reference database that drives DIA analysis. For each peptide it stores:
 
@@ -677,44 +800,83 @@ for DDA cannot be applied directly. Instead, DIA data are analysed using a
 """
 )
 
-# Workflow diagram 
+# Workflow diagram
 STEPS = [
-    ("1\nSpectral\nLibrary",    "#4A90D9",  "Reference b/y ions\nfor each peptide"),
-    ("2\nTargeted\nExtraction", "#5BAD72",  "XIC per transition\nwithin RT window"),
-    ("3\nPeak\nDetection",      "#E8A838",  "Find co-eluting\nchromatographic peaks"),
-    ("4\nScoring",              "#D95A4A",  "XIC correlation\n+ spectral angle"),
-    ("5\nFDR\nControl",         "#9B59B6",  "Target–decoy\n1% FDR threshold"),
+    ("1\nSpectral\nLibrary", "#4A90D9", "Reference b/y ions\nfor each peptide"),
+    ("2\nTargeted\nExtraction", "#5BAD72", "XIC per transition\nwithin RT window"),
+    ("3\nPeak\nDetection", "#E8A838", "Find co-eluting\nchromatographic peaks"),
+    ("4\nScoring", "#D95A4A", "XIC correlation\n+ spectral angle"),
+    ("5\nFDR\nControl", "#9B59B6", "Target–decoy\n1% FDR threshold"),
 ]
 
 fig_wf, ax_wf = plt.subplots(figsize=(12, 2.8))
-ax_wf.set_xlim(0, 12); ax_wf.set_ylim(0, 2.8); ax_wf.axis("off")
+ax_wf.set_xlim(0, 12)
+ax_wf.set_ylim(0, 2.8)
+ax_wf.axis("off")
 
 box_w, box_h = 1.8, 1.4
 xs_wf = np.linspace(0.8, 9.8, len(STEPS))
 
 for i, ((label, color, subtitle), x) in enumerate(zip(STEPS, xs_wf)):
-    ax_wf.add_patch(mpatches.FancyBboxPatch(
-        (x - box_w/2, 0.7), box_w, box_h,
-        boxstyle="round,pad=0.12",
-        facecolor=color, edgecolor="white", lw=1.5, alpha=0.90, zorder=3))
-    ax_wf.text(x, 1.38, label, ha="center", va="center",
-               fontsize=9, fontweight="bold", color="white", zorder=4,
-               linespacing=1.3)
-    ax_wf.text(x, 0.45, subtitle, ha="center", va="top",
-               fontsize=7.5, color="#444444", linespacing=1.3, zorder=4)
+    ax_wf.add_patch(
+        mpatches.FancyBboxPatch(
+            (x - box_w / 2, 0.7),
+            box_w,
+            box_h,
+            boxstyle="round,pad=0.12",
+            facecolor=color,
+            edgecolor="white",
+            lw=1.5,
+            alpha=0.90,
+            zorder=3,
+        )
+    )
+    ax_wf.text(
+        x,
+        1.38,
+        label,
+        ha="center",
+        va="center",
+        fontsize=9,
+        fontweight="bold",
+        color="white",
+        zorder=4,
+        linespacing=1.3,
+    )
+    ax_wf.text(
+        x,
+        0.45,
+        subtitle,
+        ha="center",
+        va="top",
+        fontsize=7.5,
+        color="#444444",
+        linespacing=1.3,
+        zorder=4,
+    )
     # Fixed arrowstyle: '->' is universally supported
     if i < len(STEPS) - 1:
         x_next = xs_wf[i + 1]
         ax_wf.annotate(
-            "", xy=(x_next - box_w/2 - 0.05, 1.38),
-            xytext=(x + box_w/2 + 0.05, 1.38),
-            arrowprops=dict(arrowstyle="->", color="#555555",
-                            lw=1.8, mutation_scale=16),
+            "",
+            xy=(x_next - box_w / 2 - 0.05, 1.38),
+            xytext=(x + box_w / 2 + 0.05, 1.38),
+            arrowprops=dict(
+                arrowstyle="->", color="#555555", lw=1.8, mutation_scale=16
+            ),
             zorder=5,
         )
 
-ax_wf.text(6.0, 2.65, "Peptide-Centric DIA Analysis Workflow",
-           ha="center", va="top", fontsize=11, fontweight="bold", color="#222222")
+ax_wf.text(
+    6.0,
+    2.65,
+    "Peptide-Centric DIA Analysis Workflow",
+    ha="center",
+    va="top",
+    fontsize=11,
+    fontweight="bold",
+    color="#222222",
+)
 fig_wf.tight_layout()
 fig_to_st(fig_wf, caption="The peptide-centric DIA analysis pipeline.")
 
@@ -772,21 +934,22 @@ Identifications are reported at a **1% FDR** threshold, meaning at most 1 in
 """
 )
 
-# XIC + scoring concept figure 
+# XIC + scoring concept figure
 fig_xic, axes_xic = plt.subplots(1, 3, figsize=(12, 3.5))
 
-t_xic  = np.linspace(0, 10, 500)
-APEX   = 5.0; SIGMA_XIC = 0.65
+t_xic = np.linspace(0, 10, 500)
+APEX = 5.0
+SIGMA_XIC = 0.65
 frag_colors_xic = ["#CC1111", "#1199CC", "#22AA33", "#DD8800", "#8833CC"]
-frag_amps_xic   = [1.00, 0.72, 0.55, 0.40, 0.28]
+frag_amps_xic = [1.00, 0.72, 0.55, 0.40, 0.28]
 frag_labels_xic = ["y5", "y4", "y3", "b4", "b3"]
 rng3 = np.random.default_rng(55)
 
 xic_signals = []
 for amp, col, lbl in zip(frag_amps_xic, frag_colors_xic, frag_labels_xic):
-    signal = amp * np.exp(-((t_xic - APEX)**2) / (2 * SIGMA_XIC**2))
-    noise  = rng3.exponential(0.04, len(t_xic))
-    xic    = signal + noise
+    signal = amp * np.exp(-((t_xic - APEX) ** 2) / (2 * SIGMA_XIC**2))
+    noise = rng3.exponential(0.04, len(t_xic))
+    xic = signal + noise
     xic_signals.append(xic)
     axes_xic[0].plot(t_xic, xic, color=col, lw=1.6, alpha=0.85, label=lbl)
 
@@ -798,14 +961,28 @@ axes_xic[0].legend(fontsize=7.5, ncol=2, loc="upper right")
 axes_xic[0].spines["top"].set_visible(False)
 axes_xic[0].spines["right"].set_visible(False)
 
-lib_ints_sa  = np.array(frag_amps_xic)
-obs_ints_sa  = np.array([x[np.argmin(np.abs(t_xic - APEX))] for x in xic_signals])
+lib_ints_sa = np.array(frag_amps_xic)
+obs_ints_sa = np.array([x[np.argmin(np.abs(t_xic - APEX))] for x in xic_signals])
 obs_ints_sa /= obs_ints_sa.max()
 x_bars = np.arange(len(frag_labels_xic))
-axes_xic[1].bar(x_bars - 0.2, lib_ints_sa, width=0.38, color="#888888",
-                alpha=0.7, label="Library", edgecolor="white")
-axes_xic[1].bar(x_bars + 0.2, obs_ints_sa, width=0.38, color="#E05533",
-                alpha=0.8, label="Observed", edgecolor="white")
+axes_xic[1].bar(
+    x_bars - 0.2,
+    lib_ints_sa,
+    width=0.38,
+    color="#888888",
+    alpha=0.7,
+    label="Library",
+    edgecolor="white",
+)
+axes_xic[1].bar(
+    x_bars + 0.2,
+    obs_ints_sa,
+    width=0.38,
+    color="#E05533",
+    alpha=0.8,
+    label="Observed",
+    edgecolor="white",
+)
 axes_xic[1].set_xticks(x_bars)
 axes_xic[1].set_xticklabels(frag_labels_xic, fontsize=9)
 axes_xic[1].set_title("Step 4a: Spectral Angle\n(Library vs Observed)", fontsize=9.5)
@@ -816,15 +993,30 @@ axes_xic[1].spines["right"].set_visible(False)
 
 rng4 = np.random.default_rng(77)
 target_scores = np.clip(rng4.normal(0.72, 0.14, 500), 0, 1)
-decoy_scores  = np.clip(rng4.normal(0.38, 0.16, 500), 0, 1)
+decoy_scores = np.clip(rng4.normal(0.38, 0.16, 500), 0, 1)
 bins_s = np.linspace(0, 1, 28)
-axes_xic[2].hist(target_scores, bins=bins_s, color="#2ECC71", alpha=0.75,
-                 label="Targets", edgecolor="white", lw=0.5)
-axes_xic[2].hist(decoy_scores,  bins=bins_s, color="#E74C3C", alpha=0.75,
-                 label="Decoys",  edgecolor="white", lw=0.5)
+axes_xic[2].hist(
+    target_scores,
+    bins=bins_s,
+    color="#2ECC71",
+    alpha=0.75,
+    label="Targets",
+    edgecolor="white",
+    lw=0.5,
+)
+axes_xic[2].hist(
+    decoy_scores,
+    bins=bins_s,
+    color="#E74C3C",
+    alpha=0.75,
+    label="Decoys",
+    edgecolor="white",
+    lw=0.5,
+)
 thresh = np.quantile(decoy_scores, 0.95)
-axes_xic[2].axvline(thresh, color="black", lw=1.8, linestyle="--",
-                    label=f"1% FDR ({thresh:.2f})")
+axes_xic[2].axvline(
+    thresh, color="black", lw=1.8, linestyle="--", label=f"1% FDR ({thresh:.2f})"
+)
 axes_xic[2].set_title("Step 4–5: Score Distributions\n& FDR Threshold", fontsize=9.5)
 axes_xic[2].set_xlabel("Composite Score", fontsize=9)
 axes_xic[2].set_ylabel("Count", fontsize=9)
