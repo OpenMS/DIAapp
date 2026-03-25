@@ -612,7 +612,7 @@ terms = {
     ),
     "iRT (indexed Retention Time)": (
         "A dimensionless, instrument-independent retention time scale calibrated "
-        "using a set of synthetic reference peptides (Biognosys iRT kit). "
+        "using a set of synthetic reference peptides (e.g., Biognosys iRT kit, Thermo Scientific Pierce iRT kit, endogenous ciRTs). "
         "Library iRT values are converted to experiment-specific RT via a linear "
         "regression model built from the spiked-in reference peptides."
     ),
