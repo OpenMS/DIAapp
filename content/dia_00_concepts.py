@@ -1116,5 +1116,7 @@ st.markdown(
    AlphaPeptDeep: a modular deep learning framework to predict peptide properties
    for proteomics. *Nat Commun.* 2022;13:7238.
    https://doi.org/10.1038/s41467-022-34904-3
+   
+9. **Reiter, L., Rinner, O., Picotti, P. et al.** mProphet: automated data          processing and statistical validation for large-scale SRM experiments. Nat Methods 8, 430–435 (2011). https://doi.org/10.1038/nmeth.1584
 """
 )
