@@ -85,22 +85,11 @@ if __name__ == "__main__":
                 icon="🎭",
             ),
         ],
-        "pyOpenMS Toolbox": [
-            st.Page(Path("content", "digest.py"), title="In Silico Digest", icon="✂️"),
+        "OpenSwath": [
             st.Page(
-                Path("content", "peptide_mz_calculator.py"),
-                title="m/z Calculator",
+                Path("content", "openswath_configuration.py"),
+                title="Configuration",
                 icon="⚖️",
-            ),
-            st.Page(
-                Path("content", "isotope_pattern_generator.py"),
-                title="Isotopic Pattern Calculator",
-                icon="📶",
-            ),
-            st.Page(
-                Path("content", "fragmentation.py"),
-                title="Fragment Ion Generation",
-                icon="💥",
             ),
         ],
         "Others": [
