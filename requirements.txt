@@ -143,8 +143,8 @@ redis>=5.0.0
 rq>=1.16.0
 
 # DIA stuff
-easypqp==0.1.58
-easypqp_rs==0.1.7
+easypqp==0.1.59
+easypqp_rs==0.1.9
 redeem_properties==0.1.1
 scipy==1.17.1
 scikit-learn==1.8.0
