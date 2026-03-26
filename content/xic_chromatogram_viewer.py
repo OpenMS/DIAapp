@@ -17,6 +17,7 @@ from typing import Optional
 
 import pandas as pd
 import streamlit as st
+from scipy.signal import savgol_filter
 
 from src.common.common import page_setup
 from src import fileupload
@@ -80,6 +81,9 @@ _defaults: dict = {
     "shared_analytes": None,  # pd.DataFrame — union/intersection of analytes
     "file_analytes": {},  # {display_name: pd.DataFrame}
     "files_loaded": False,
+    "smooth_toggle": True,  # Savitzky-Golay smoothing toggle
+    "sgolay_order": 3,  # Polynomial order for Savitzky-Golay filter
+    "sgolay_window": 9,  # Window length for Savitzky-Golay filter
 }
 for _k, _v in _defaults.items():
     if _k not in st.session_state:
@@ -137,10 +141,16 @@ def _build_shared_analytes(
 
 
 def _plot_chromatogram(
-    xic_h: "poms.XICParquetFile", precursor_id: int, title_suffix: str = ""
+    xic_h: "poms.XICParquetFile",
+    precursor_id: int,
+    title_suffix: str = "",
+    smooth_enabled: bool = False,
+    sgolay_order: int = 3,
+    sgolay_window: int = 9,
 ) -> Optional[object]:
     """
     Query chromatograms for a single precursor from an open XICParquetFile.
+    Optionally apply Savitzky-Golay smoothing to intensity values.
     Returns a Plotly figure or None on failure.
     """
     try:
@@ -148,6 +158,15 @@ def _plot_chromatogram(
         xic = chrom_query.to_df()
         if xic is None or xic.empty:
             return None
+
+        # Apply Savitzky-Golay smoothing if enabled
+        if smooth_enabled:
+            xic["intensity"] = xic.groupby("annotation")["intensity"].transform(
+                lambda x: savgol_filter(
+                    x, window_length=sgolay_window, polyorder=sgolay_order
+                )
+            )
+
         sequence = xic["modified_sequence"].iloc[0]
         charge = xic["precursor_charge"].iloc[0]
         is_decoy = xic["precursor_decoy"].iloc[0]
@@ -386,6 +405,41 @@ if st.session_state.files_loaded and st.session_state.shared_analytes is not Non
             key="plot_height",
         )
 
+    # -- Smoothing options --
+    st.markdown("")
+    smooth_col1, smooth_col2, smooth_col3 = st.columns([2, 1, 1])
+    with smooth_col1:
+        smooth_enabled = st.toggle(
+            "Apply Savitzky-Golay smoothing",
+            value=st.session_state.smooth_toggle,
+            key="smooth_toggle",
+            help="Enable smoothing of chromatogram intensities using Savitzky-Golay filter.",
+        )
+
+    if smooth_enabled:
+        with smooth_col2:
+            sgolay_order = st.number_input(
+                "Order",
+                min_value=1,
+                max_value=10,
+                value=st.session_state.sgolay_order,
+                key="sgolay_order",
+                help="Polynomial order for Savitzky-Golay filter.",
+            )
+        with smooth_col3:
+            sgolay_window = st.number_input(
+                "Window length",
+                min_value=3,
+                max_value=51,
+                value=st.session_state.sgolay_window,
+                step=2,
+                key="sgolay_window",
+                help="Window length for Savitzky-Golay filter (must be odd).",
+            )
+    else:
+        sgolay_order = st.session_state.sgolay_order
+        sgolay_window = st.session_state.sgolay_window
+
     # Runs selection + clear button
     ctl_col1, ctl_col2 = st.columns([3, 1])
     tmp_path_map = dict(st.session_state.xic_tmp_paths)  # {display_name: tmp_path}
@@ -450,7 +504,14 @@ if st.session_state.files_loaded and st.session_state.shared_analytes is not Non
                 # Open and plot
                 try:
                     xic_h = poms.XICParquetFile(tmp_path)
-                    result = _plot_chromatogram(xic_h, selected_pid, title_suffix=fname)
+                    result = _plot_chromatogram(
+                        xic_h,
+                        selected_pid,
+                        title_suffix=fname,
+                        smooth_enabled=st.session_state.smooth_toggle,
+                        sgolay_order=st.session_state.sgolay_order,
+                        sgolay_window=st.session_state.sgolay_window,
+                    )
 
                     if result is None:
                         st.markdown(f"**{fname}**")
