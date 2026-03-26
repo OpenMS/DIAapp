@@ -151,6 +151,36 @@ def save_uploaded_xic(uploaded_files: list[bytes]) -> list[tuple[str, str]]:
     return saved
 
 
+def remove_all_xic_files() -> None:
+    """
+    Remove all XIC files stored in the current workspace `xic-files` directory.
+    Also removes session-state references if present.
+    """
+    xic_dir = Path(st.session_state.workspace, "xic-files")
+    if not xic_dir.exists():
+        st.info("No XIC files present in workspace.")
+        return
+
+    removed = 0
+    for p in xic_dir.iterdir():
+        try:
+            if p.is_file():
+                p.unlink()
+                removed += 1
+        except Exception:
+            pass
+
+    # Clear session state keys related to XIC viewer if present
+    for key in ["xic_tmp_paths", "file_analytes", "shared_analytes", "files_loaded"]:
+        if key in st.session_state:
+            del st.session_state[key]
+
+    if removed:
+        st.success(f"Removed {removed} XIC file(s) from workspace.")
+    else:
+        st.info("No XIC files were removed.")
+
+
 def remove_all_mzML_files(params: dict) -> dict:
     """
     Removes all mzML files from the mzML directory.
