@@ -99,6 +99,20 @@ with st.expander("⚙️ Advanced Database Settings", expanded=False):
             key="adv_missed_cleavages",
             help="Number of allowed missed cleavages.",
         )
+        cleave_at = st.text_input(
+            "Cleave At",
+            value="KR",
+            max_chars=10,
+            key="adv_cleave_at",
+            help="Residues where the enzyme cleaves (e.g., 'KR' for Trypsin).",
+        )
+        restrict = st.text_input(
+            "Restrict (before this residue)",
+            value="P",
+            max_chars=10,
+            key="adv_restrict",
+            help="Residues that prevent cleavage (e.g., 'P' for Proline with Trypsin).",
+        )
     with col2:
         peptide_min_mass = st.number_input(
             "Min Peptide Mass (Da)",
@@ -116,6 +130,24 @@ with st.expander("⚙️ Advanced Database Settings", expanded=False):
             key="adv_max_mass",
             help="Maximum peptide mass threshold.",
         )
+        min_peptide_len = st.number_input(
+            "Min Peptide Length",
+            min_value=0,
+            max_value=100,
+            value=0,
+            step=1,
+            key="adv_min_pep_len",
+            help="Minimum peptide length (0 = no restriction).",
+        )
+        max_peptide_len = st.number_input(
+            "Max Peptide Length",
+            min_value=0,
+            max_value=100,
+            value=0,
+            step=1,
+            key="adv_max_pep_len",
+            help="Maximum peptide length (0 = no restriction).",
+        )
     with col3:
         max_variable_mods = st.number_input(
             "Max Variable Modifications",
@@ -125,6 +157,123 @@ with st.expander("⚙️ Advanced Database Settings", expanded=False):
             key="adv_max_var_mods",
             help="Maximum number of variable modifications per peptide.",
         )
+        semi_enzymatic = st.toggle(
+            "Semi-Enzymatic Cleavage",
+            value=False,
+            key="adv_semi_enzymatic",
+            help="Allow peptides with only one enzymatic end.",
+        )
+        c_terminal = st.toggle(
+            "C-Terminal Specific",
+            value=False,
+            key="adv_c_terminal",
+            help="Require C-terminal cleavage specificity.",
+        )
+
+    # --- Static Modifications ---
+    st.divider()
+    st.markdown(
+        "**Static Modifications** — Fixed mass shifts applied to all instances of specified residues."
+    )
+    static_mods_col1, static_mods_col2 = st.columns([2, 1])
+
+    # Initialize session state for static mods
+    if "static_mods" not in st.session_state:
+        st.session_state.static_mods = [
+            ("C", 57.0215)
+        ]  # Default: Carbamidomethyl-Cysteine
+
+    with static_mods_col1:
+        st.markdown("**Residue** → **Mass (Da)**")
+        for i, (residue, mass) in enumerate(st.session_state.static_mods):
+            col_a, col_b, col_c = st.columns([1, 2, 0.5])
+            with col_a:
+                new_residue = st.text_input(
+                    f"Residue {i}",
+                    value=residue,
+                    max_chars=1,
+                    key=f"static_res_{i}",
+                )
+            with col_b:
+                new_mass = st.number_input(
+                    f"Mass {i}",
+                    value=mass,
+                    format="%.4f",
+                    key=f"static_mass_{i}",
+                )
+            with col_c:
+                if st.button(
+                    "✕", key=f"rm_static_{i}", help="Remove this modification"
+                ):
+                    st.session_state.static_mods.pop(i)
+                    st.rerun()
+            # Update session state with new values
+            st.session_state.static_mods[i] = (new_residue, new_mass)
+
+    with static_mods_col2:
+        if st.button("➕ Add Static Mod", key="add_static_mod"):
+            st.session_state.static_mods.append(("", 0.0))
+            st.rerun()
+
+    # --- Variable Modifications ---
+    st.divider()
+    st.markdown(
+        """**Variable Modifications** — Optional mass shifts with position markers: 
+\n
+- `^X` = Modification to be applied to amino acid X if it appears at the N-terminus of a peptide
+- `$X` = Modification to be applied to amino acid X if it appears at the C-terminus of a peptide
+- `[X` = Modification to be applied to amino acid X if it appears at the N-terminus of a protein
+- `]X` = Modification to be applied to amino acid X if it appears at the C-terminus of a protein
+"""
+    )
+    var_mods_col1, var_mods_col2 = st.columns([2, 1])
+
+    # Initialize session state for variable mods
+    if "variable_mods" not in st.session_state:
+        st.session_state.variable_mods = [
+            ("[", [42.0]),  # N-terminal acetylation
+            # ("$K", [8.014199]),  # Lysine
+            ("M", [15.9949]),  # Methionine
+            # ("$R", [10.008269]),  # Arginine
+        ]
+
+    with var_mods_col1:
+        st.markdown("**Position Marker** → **Masses (comma-separated)**")
+        for i, (position, masses) in enumerate(st.session_state.variable_mods):
+            col_a, col_b, col_c = st.columns([1, 2, 0.5])
+            with col_a:
+                new_position = st.text_input(
+                    f"Marker {i}",
+                    value=position,
+                    max_chars=3,
+                    key=f"var_pos_{i}",
+                    help="e.g., '[' (N-term), '$K' (Lys), 'M' (Met), '$R' (Arg), '' (C-term)",
+                )
+            with col_b:
+                masses_str = ", ".join(str(m) for m in masses)
+                new_masses_str = st.text_input(
+                    f"Masses {i}",
+                    value=masses_str,
+                    key=f"var_masses_{i}",
+                    help="Comma-separated mass values",
+                )
+                try:
+                    new_masses = [
+                        float(m.strip()) for m in new_masses_str.split(",") if m.strip()
+                    ]
+                except ValueError:
+                    new_masses = masses
+            with col_c:
+                if st.button("✕", key=f"rm_var_{i}", help="Remove this modification"):
+                    st.session_state.variable_mods.pop(i)
+                    st.rerun()
+            # Update session state with new values
+            st.session_state.variable_mods[i] = (new_position, new_masses)
+
+    with var_mods_col2:
+        if st.button("➕ Add Var Mod", key="add_var_mod"):
+            st.session_state.variable_mods.append(("", [0.0]))
+            st.rerun()
 
 st.markdown("---")
 
@@ -461,6 +610,12 @@ if st.button(
             # Get advanced parameters from session state (with defaults if not set)
             enzyme = st.session_state.get("adv_enzyme", "Trypsin")
             missed_cleavages = st.session_state.get("adv_missed_cleavages", 0)
+            min_peptide_len = st.session_state.get("adv_min_pep_len", 0)
+            max_peptide_len = st.session_state.get("adv_max_pep_len", 0)
+            cleave_at = st.session_state.get("adv_cleave_at", "KR")
+            restrict = st.session_state.get("adv_restrict", "P")
+            semi_enzymatic = st.session_state.get("adv_semi_enzymatic", False)
+            c_terminal = st.session_state.get("adv_c_terminal", False)
             max_variable_mods = st.session_state.get("adv_max_var_mods", 3)
             peptide_min_mass = st.session_state.get("adv_min_mass", 500.0)
             peptide_max_mass = st.session_state.get("adv_max_mass", 5000.0)
@@ -477,14 +632,43 @@ if st.button(
             st.write("📝 Building configuration...")
 
             # === BUILD MERGED JSON CONFIG (per JSON schema) ===
+            # Prepare static mods dictionary (filter out empty entries)
+            static_mods_dict = {
+                res: mass for res, mass in st.session_state.static_mods if res.strip()
+            }
+
+            # Prepare variable mods dictionary (filter out empty entries)
+            variable_mods_dict = {
+                pos: masses
+                for pos, masses in st.session_state.variable_mods
+                if pos.strip() and masses
+            }
+
             merged_config = {
                 "database": {
                     "fasta": str(fasta_path),
                     "generate_decoys": bool(generate_decoys),
                     "decoy_tag": str(decoy_tag),
+                    "enzyme": {
+                        "missed_cleavages": int(missed_cleavages),
+                        "min_len": int(min_peptide_len)
+                        if min_peptide_len > 0
+                        else None,
+                        "max_len": int(max_peptide_len)
+                        if max_peptide_len > 0
+                        else None,
+                        "cleave_at": str(cleave_at) if cleave_at.strip() else None,
+                        "restrict": str(restrict) if restrict.strip() else None,
+                        "c_terminal": bool(c_terminal) if c_terminal else None,
+                        "semi_enzymatic": bool(semi_enzymatic)
+                        if semi_enzymatic
+                        else None,
+                    },
                     "max_variable_mods": int(max_variable_mods),
                     "peptide_min_mass": float(peptide_min_mass),
                     "peptide_max_mass": float(peptide_max_mass),
+                    "static_mods": static_mods_dict,
+                    "variable_mods": variable_mods_dict,
                 },
                 "insilico_settings": {
                     "precursor_charge": [
