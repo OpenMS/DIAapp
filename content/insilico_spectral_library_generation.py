@@ -215,6 +215,18 @@ with st.expander("⚙️ Advanced Database Settings", expanded=False):
             st.session_state.static_mods.append(("", 0.0))
             st.rerun()
 
+        # Preset buttons for common static modifications
+        existing_static_residues = {res for res, _ in st.session_state.static_mods}
+        preset_static = [
+            ("C", 57.0215, "Carbamidomethyl-C"),
+        ]
+
+        for residue, mass, label in preset_static:
+            if residue not in existing_static_residues:
+                if st.button(f"➕ {label}", key=f"preset_static_{residue}"):
+                    st.session_state.static_mods.append((residue, mass))
+                    st.rerun()
+
     # --- Variable Modifications ---
     st.divider()
     st.markdown(
@@ -274,6 +286,35 @@ with st.expander("⚙️ Advanced Database Settings", expanded=False):
         if st.button("➕ Add Var Mod", key="add_var_mod"):
             st.session_state.variable_mods.append(("", [0.0]))
             st.rerun()
+
+        # Preset buttons for common variable modifications
+        existing_var_positions = {pos for pos, _ in st.session_state.variable_mods}
+        presets_var = [
+            ("[", [42.0], "Acetyl (N-term)"),
+            ("$K", [8.014199], "Acetyl-K"),
+            ("M", [15.9949], "Oxidation-M"),
+            ("$R", [10.008269], "Acetyl-R"),
+            ("S", [79.9663], "Phospho-S"),
+            ("T", [79.9663], "Phospho-T"),
+            ("Y", [79.9663], "Phospho-Y"),
+        ]
+
+        # Filter presets that are not already present
+        available_presets = [
+            p for p in presets_var if p[0] not in existing_var_positions
+        ]
+
+        if available_presets:
+            # Arrange presets in columns for better spacing
+            preset_cols = st.columns(min(len(available_presets), 2))
+
+            for idx, (position, masses, label) in enumerate(available_presets):
+                with preset_cols[idx % len(preset_cols)]:
+                    if st.button(
+                        f"➕ {label}", key=f"preset_var_{position}_{masses[0]}"
+                    ):
+                        st.session_state.variable_mods.append((position, masses))
+                        st.rerun()
 
 st.markdown("---")
 
