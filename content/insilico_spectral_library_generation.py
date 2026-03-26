@@ -724,6 +724,12 @@ if st.button(
                 _json.dump(merged_config, f, indent=2)
             st.write(f"✅ Config saved to: {config_path}")
 
+            # === ALSO SAVE CONFIG TO RESULTS DIRECTORY FOR EASY DOWNLOAD ===
+            config_results_path = Path(results_dir, "easypqp_insilico.json")
+            with open(config_results_path, "w", encoding="utf-8") as f:
+                _json.dump(merged_config, f, indent=2)
+            st.write(f"✅ Config also saved to results: {config_results_path}")
+
             # === SAVE PARAMS TO WORKFLOW PARAMETER MANAGER ===
             params_to_write = {
                 "config_file": str(config_path),
@@ -823,13 +829,38 @@ if easypqp_workspace.exists() and results_dir.exists():
     all_tsv_files = list(results_dir.glob("*.tsv"))
     all_html_files = list(results_dir.glob("*.html"))
     all_parquet_files = list(results_dir.glob("*.parquet"))
+    all_json_files = list(results_dir.glob("*.json"))
 
     tsv_files = [f for f in all_tsv_files if f.exists()]
     html_files = [f for f in all_html_files if f.exists()]
     report_files = [f for f in all_parquet_files if f.exists()]
+    json_files = [f for f in all_json_files if f.exists()]
 
-    if tsv_files or html_files or report_files:
+    if tsv_files or html_files or report_files or json_files:
         st.success("✅ Results generated! Download below.")
+
+        # JSON Config files
+        if json_files:
+            st.write("**⚙️ Configuration Files:**")
+            for json_file in json_files:
+                try:
+                    col1, col2, col3 = st.columns([2, 1, 1])
+                    with col1:
+                        st.write(f"📋 {json_file.name}")
+                    with col2:
+                        file_size = json_file.stat().st_size / 1024  # KB
+                        st.write(f"({file_size:.1f} KB)")
+                    with col3:
+                        with open(json_file, "rb") as f:
+                            st.download_button(
+                                label="⬇️ Download",
+                                data=f.read(),
+                                file_name=json_file.name,
+                                key=f"json_{json_file.name}",
+                                use_container_width=True,
+                            )
+                except Exception as e:
+                    st.warning(f"⚠️ Could not access {json_file.name}: {e}")
 
         # TSV Library files
         if tsv_files:
