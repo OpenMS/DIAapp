@@ -91,6 +91,11 @@ if __name__ == "__main__":
                 title="Configuration",
                 icon="⚖️",
             ),
+            st.Page(
+                Path("content", "xic_chromatogram_viewer.py"),
+                title="XIC Chromatogram Viewer",
+                icon="📊",
+            ),
         ],
         "Others": [
             st.Page(

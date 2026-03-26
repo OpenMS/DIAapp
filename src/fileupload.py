@@ -35,7 +35,9 @@ def save_uploaded_mzML(uploaded_files: list[bytes]) -> None:
     st.success("Successfully added uploaded files!")
 
 
-def copy_local_mzML_files_from_directory(local_mzML_directory: str, make_copy: bool=True) -> None:
+def copy_local_mzML_files_from_directory(
+    local_mzML_directory: str, make_copy: bool = True
+) -> None:
     """
     Copies local mzML files from a specified directory to the mzML directory.
 
@@ -65,7 +67,7 @@ def copy_local_mzML_files_from_directory(local_mzML_directory: str, make_copy: b
             # Write the path to the local directories to the file
             with open(external_files, "a") as f_handle:
                 f_handle.write(f"{f}\n")
-                
+
     st.success("Successfully added local files!")
 
 
@@ -116,6 +118,37 @@ def remove_selected_mzML_files(to_remove: list[str], params: dict) -> dict:
                 params[k].remove(f)
     st.success("Selected mzML files removed!")
     return params
+
+
+def save_uploaded_xic(uploaded_files: list[bytes]) -> list[tuple[str, str]]:
+    """
+    Saves uploaded XIC (.xic / parquet) files to the workspace xic directory.
+
+    Returns a list of tuples (display_name, absolute_path) for the saved files.
+    """
+    xic_dir = Path(st.session_state.workspace, "xic-files")
+    xic_dir.mkdir(parents=True, exist_ok=True)
+
+    # Online mode: single file may be passed as non-list
+    if st.session_state.location == "online":
+        uploaded_files = [uploaded_files]
+
+    if not uploaded_files:
+        st.warning("Upload some XIC files first.")
+        return []
+
+    saved: list[tuple[str, str]] = []
+    existing_names = [p.name for p in xic_dir.iterdir() if p.is_file()]
+
+    for f in uploaded_files:
+        # If a file with same name already exists, overwrite to ensure latest
+        target = Path(xic_dir, f.name)
+        with open(target, "wb") as fh:
+            fh.write(f.getbuffer())
+        saved.append((f.name, str(target.resolve())))
+
+    st.success("Successfully added uploaded XIC files!")
+    return saved
 
 
 def remove_all_mzML_files(params: dict) -> dict:

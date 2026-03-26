@@ -570,10 +570,18 @@ def render_sidebar(page: str = "") -> None:
                 with st.expander("🖥️ **Workspaces**"):
                     # Define callback function to change workspace
                     def change_workspace():
+                        # Read the chosen workspace first; guard if not present
+                        chosen = st.session_state.get("chosen-workspace")
+                        if not chosen:
+                            # Nothing to do if the widget state isn't set
+                            return
+
+                        # Clear any parameter keys from the session state
                         for key in params.keys():
                             if key in st.session_state.keys():
                                 del st.session_state[key]
-                        st.query_params.workspace = st.session_state["chosen-workspace"]
+
+                        st.query_params.workspace = chosen
 
                     # Get all available workspaces as options
                     options = [
