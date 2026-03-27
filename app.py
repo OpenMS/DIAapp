@@ -87,6 +87,11 @@ if __name__ == "__main__":
         ],
         "OpenSwath": [
             st.Page(
+                Path("content", "openswath_file_upload.py"),
+                title="File Upload",
+                icon="📁",
+            ),
+            st.Page(
                 Path("content", "openswath_configuration.py"),
                 title="Configuration",
                 icon="⚖️",
